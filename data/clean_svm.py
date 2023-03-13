@@ -97,4 +97,4 @@ data.Text = data.Text.apply(lambda x: clean_method_1(x))
 data.Sentiment = data.Sentiment.apply(lambda x: 1 if str.lower(x) == 'positive' else 0)
 data = data[['Text', 'Sentiment']]
 os.makedirs('./curated/reviews/svm', exist_ok=True)
-data.to_csv('./curated/reviews/svm/uy_cleaned1.csv', index=False)
+data.to_csv('./curated/reviews/svm/uy_cleaned_reviews1.csv', index=False)
