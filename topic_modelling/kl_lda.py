@@ -2,11 +2,28 @@ import pandas as pd
 import gensim
 import gensim.corpora as corpora 
 from pprint import pprint
+from gensim import models
 import pyLDAvis.gensim
 import pickle 
 import pyLDAvis
 import os
 from pathlib import Path
+from gensim.models import CoherenceModel
+
+"""
+# split a sentence into a list 
+# remove words with length lesser than 3
+def split_sentence(text):
+    lst = []
+    for sentence in text:
+        splitted_sentence = sentence.split()
+        inner_lst = []
+        for word in splitted_sentence:
+            if len(word) >= 3:
+                inner_lst.append(word)
+        lst.append(inner_lst)
+    return lst
+"""
 
 # split a sentence into a list 
 def split_sentence(text):
@@ -35,17 +52,32 @@ if __name__ == '__main__':
     # convert list of words into bag-of-words format
     corpus = [id2word.doc2bow(text) for text in collection_texts]
 
+    # create tf-idf model
+    tfidf = models.TfidfModel(corpus)
+    corpus_tfidf = tfidf[corpus]
+
     # number of topics
     num_topics = 5
 
-    # Build LDA model 
+    # Running LDA using Bag of Words 
     lda_model = gensim.models.LdaMulticore(corpus=corpus,
                                         id2word=id2word,
                                         num_topics=num_topics)
 
-    # Print the Keyword in the 10 topics
-    #pprint(lda_model.print_topics())
-    #doc_lda = lda_model[corpus]
+    # Print the Keyword in the 5 topics 
+    for idx, topic in lda_model.print_topics(num_words=10):    
+        print('Topic: {} \nWords: {}'.format(idx, topic))
+
+    # Running LDA using TF-IDF
+    lda_model_tfidf = gensim.models.LdaMulticore(corpus_tfidf, 
+                                                 num_topics=num_topics, 
+                                                 id2word=id2word, 
+                                                 passes=2,
+                                                 workers=4)
+    
+    # Print the Keyword in the 5 topics 
+    for idx, topic in lda_model_tfidf.print_topics(num_words=10):    
+        print('Topic: {} \nWords: {}'.format(idx, topic))
 
     # Visualize the topics
     #pyLDAvis.enable_notebook()
