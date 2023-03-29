@@ -118,7 +118,7 @@ if __name__ == '__main__':
     df['processed_text'] = df['processed_text'].apply(lambda x:text_normalization(x))
     df['Sentiment'] = df['Sentiment'].apply(lambda x:label_to_integer(x))
 
-    df.to_csv(path_to_output)
+    df.to_csv(path_to_output, index = False)
 
 
 
