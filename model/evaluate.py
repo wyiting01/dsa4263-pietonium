@@ -5,6 +5,16 @@ import pickle
 from sklearn.metrics import confusion_matrix, accuracy_score
 from sklearn import svm
 from xgboost import XGBClassifier
+# from my_bert_model import bert_pipeline, get_bert_prediction
+
+import warnings
+warnings.filterwarnings("ignore")
+
+'''
+Note for BERT model team:
+1. bert_pipeline is a function to preprocess the dataset into the format of the bert model
+2. get_bert_prediction(saved_model_weight) is a function to predict sentiments
+'''
 
 '''
 models_meta contains filepaths for:
@@ -79,4 +89,4 @@ def evaluate(test_data_path = "../data/curated/reviews/cleaned_reviews.csv", tar
 
     return result_dict
     
-# print(evaluate(target_models = ["svm", "xgboost"]))
+print(evaluate(target_models = ["svm", "xgboost"]))
