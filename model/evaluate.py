@@ -1,17 +1,26 @@
 # load in preprocessing and relevant libraries
-import pandas as pd
-import numpy as np
+import pathlib
 import pickle
-from sklearn.metrics import confusion_matrix, accuracy_score
-from sklearn import svm
-from xgboost import XGBClassifier
-import numpy as np
-from transformers import BertTokenizer
-import tensorflow as tf
-from tensorflow.keras.optimizers.schedules import PolynomialDecay
-
+import sys
 import warnings
+
+import numpy as np
+import pandas as pd
+import tensorflow as tf
+from sklearn import svm
+from sklearn.metrics import accuracy_score, confusion_matrix
+from tensorflow.keras.optimizers.schedules import PolynomialDecay
+from xgboost import XGBClassifier
+
 warnings.filterwarnings("ignore")
+
+THIS_DIR = pathlib.Path(__file__).resolve()
+PROJ_DIR = THIS_DIR.parents[1]
+sys.path.append(PROJ_DIR.as_posix())
+
+from sentiment_analysis.Deep_Learning.bert import (build_layers, read_data,
+                                                   tokenization)
+
 
 '''
 models_meta contains filepaths for:
@@ -41,70 +50,15 @@ FUNCTIONS FOR BERT MODEL
 2. instantiate_bert_model() is a function to create the bert architecture - weights will be updated with the weights from saved model
 '''
 
-def bert_pipeline(sentence_column, labels_column, max_len = 512):
-    # Extract label values to get the size
-    arr = np.array(labels_column)
-    print(f"Total number of rows = {arr.size}")
-
-    # Create 2D array to indicate which row of data the label belongs to
-    labels = np.zeros((arr.size, arr.max() + 1), dtype=int)
-
-    # Indicate the label (0 or 1) of the respective row of data
-    labels[np.arange(arr.size), arr] = 1
-    print(f"Label Shape: {labels.shape}")
-
-    # Load the BERT tokenizer
-    print('Loading BERT tokenizer...')
-    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', do_lower_case=True)
-
-    # Encode our concatenated data
-    print("Tokenizing sentences...")
-    encoded_tweets = [tokenizer.encode(sent, add_special_tokens=True) for sent in sentence_column]
-
-    # Initialise two arrays for input tensors
-    print("Initialising arrays for input tensors...")
-    Xids = np.zeros((len(sentence_column), max_len))
-    Xmask = np.zeros((len(sentence_column), max_len))
-    print(f"Input Tensors Shape: {Xids.shape}")
-
-    print("Encoding sentences...")
-    # For each text in the dataframe...
-    for i, sequence in enumerate(sentence_column):
-        
-        # Return a dictionary containing the encoded sentence
-        tokens = tokenizer.encode_plus(str(sequence), max_length = max_len, 
-                                    truncation = True,               # Needed since there are text seq > 512
-                                    padding = "max_length",          # For sentence < 512, padding is applied to reach a length of 512
-                                    add_special_tokens = True,       # Mark the start and end of sequences
-                                    return_token_type_ids = False, 
-                                    return_attention_mask = True, 
-                                    return_tensors = 'tf')           # Return TensorFlow object
-        
-        # Retrieve input_ids and attention_mask
-        ### input_ids : list of integers uniquely tied to a specific word
-        ### attention_mask : binary tokens indicating which tokens are the actual input tokens and which are padding tokens
-        Xids[i, :], Xmask[i, :] = tokens['input_ids'], tokens['attention_mask']
-
-    # Combine arrays into tensorflow object
-    print("Creating Tensoflow Dataset...")
-    dataset = tf.data.Dataset.from_tensor_slices((Xids, Xmask, labels))
-
-    # Create function to restructure the dataset
-    def map_func(input_ids, masks, labels):
-        return {'input_ids': input_ids, 'attention_mask': masks},labels
-
-    # Apply map method to apply our function above to the dataset
-    dataset = dataset.map(map_func)
-
-    # Shuffle the data to prevent overfitting
-    print("Shuffling dataset...")
-    dataset = dataset.shuffle(100000, reshuffle_each_iteration = False)
-
-    print("Success! Data is ready modelling!")
-    return dataset
+def bert_pipeline(test_data_path):
+    cleaned_df = read_data(test_data_path)
+    X_testids, X_testmask = tokenization(cleaned_df)
+    X_test = [X_testids, X_testmask]
+    return X_test
 
 def instantiate_bert_model():
-    pass
+    model = build_layers()
+    return model
 
 def evaluate(test_data_path = "../data/curated/reviews/cleaned_reviews.csv", target_models = ["svm", "xgboost", "bert"]): # ater running the preprocess file
     '''
@@ -128,7 +82,7 @@ def evaluate(test_data_path = "../data/curated/reviews/cleaned_reviews.csv", tar
             saved_model = pickle.load(open(models_meta[model]["saved_model"], "rb")) # load saved model
             
         elif model in ["bert"]: # preparation for the bert's input requirement
-            test_x = bert_pipeline(test_data_feature, test_y, max_len = 512)
+            test_x = bert_pipeline(test_data_path)
             saved_model = instantiate_bert_model()
             saved_model = saved_model.load_weights(models_meta[model]["saved_model"])
 
