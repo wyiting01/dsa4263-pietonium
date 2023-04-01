@@ -3,8 +3,8 @@ import pandas as pd
 import numpy as np
 import pickle
 from sklearn.metrics import confusion_matrix, accuracy_score
-from xgboost import XGBClassifier
 from sklearn import svm
+from xgboost import XGBClassifier
 
 '''
 models_meta contains filepaths for:
@@ -13,8 +13,8 @@ models_meta contains filepaths for:
 '''
 models_meta = {}
 models_meta["svm"] = {
-    "saved_tfidf": "svm_vectorizer.pkl",
-    "saved_model": "svm.pkl"
+    "saved_tfidf": "uy_svm1_vectorizer.pkl",
+    "saved_model": "uy_svm1.pkl"
     }
 models_meta["xgboost"] = {
     "saved_tfidf": "xgboost_vectorizer.pkl",
@@ -25,16 +25,16 @@ models_meta["bert"] = {
     }
     
 test_data_path = "../data/curated/reviews/cleaned_reviews.csv"
-svm_linear_classifier = svm.LinearSVC()
-xgb_model = XGBClassifier(random_state = 1)
+# svm_linear_classifier = svm.LinearSVC()
+# xgb_model = XGBClassifier(random_state = 1)
 
-def evaluate(test_data_path, target_models = ["svm", "xgboost", "bert"]): # ater running the preprocess file
+def evaluate(test_data_path = "../data/curated/reviews/cleaned_reviews.csv", target_models = ["svm", "xgboost", "bert"]): # ater running the preprocess file
     '''
     target_models: "svm", "xgboost", "bert"
     '''
     test_data = pd.read_csv(test_data_path)
-    test_data_feature = test_data['processed_text'].values.to_list()
-    test_y = test_data['Sentiment'].values.to_list()
+    test_data_feature = test_data['processed_text'].values.tolist()
+    test_y = test_data['Sentiment'].values.tolist()
 
     # to store every model's prediction and evalutaion metrics
     result_dict = {} 
@@ -45,7 +45,7 @@ def evaluate(test_data_path, target_models = ["svm", "xgboost", "bert"]): # ater
         model_result_dict = {}
 
         if model in ["svm", "xgboost"]: # necessary feature engineering
-            vectorizer = pickle.load(models_meta[model]["saved_tfidf"]) # load saved tfidf vectorizer
+            vectorizer = pickle.load(open(models_meta[model]["saved_tfidf"], "rb")) # load saved tfidf vectorizer
             test_x = vectorizer.transform(test_data_feature)
             
         elif model in ["bert"]: # preparation for the bert's input requirement
@@ -57,7 +57,7 @@ def evaluate(test_data_path, target_models = ["svm", "xgboost", "bert"]): # ater
             continue
 
         # prediction
-        saved_model = pickle.load(models_meta[model]["saved_model"]) # load saved model
+        saved_model = pickle.load(open(models_meta[model]["saved_model"], "rb")) # load saved model
         predicted_y = saved_model.predict(test_x)
         model_result_dict["prediction"] = predicted_y
 
@@ -79,4 +79,4 @@ def evaluate(test_data_path, target_models = ["svm", "xgboost", "bert"]): # ater
 
     return result_dict
     
-
+# print(evaluate(target_models = ["svm", "xgboost"]))
