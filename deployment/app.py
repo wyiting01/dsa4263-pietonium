@@ -14,9 +14,11 @@ def hello():
 
 '''
 upload_url = 'http://127.0.0.1:5000/upload'
-with open('xgboost.pkl', 'rb') as f:
-    files = {'file': ('uploaded_xgboost.pkl', f)}
-    upload_response = requests.post(upload_url, files=files)
+with open('reviews.csv', 'rb') as f: # use this in case file is too big, better to stream
+    files = {'file': ('uploaded_reviews.csv', f)} # filename after upload
+    #params1 = {'text_col': 'Text', 'label_col': 'Sentiment'}
+    upload_response = requests.post(upload_url, files=files) #, params=params1)
+upload_response.text
 '''
 @app.route('/upload', methods=['GET', 'POST'])
 def upload():
@@ -33,9 +35,9 @@ def upload():
         text_col_name = 'Text'
         label_col_name = 'Sentiment'
         if request.args.get('text_col'):
-            text_col_name = request.args.get('text_col') # Request's argument
+            text_col_name = request.args.get('text_col') # name of the text column
         if request.args.get('label_col'):
-            label_col_name = request.args.get('label_col') # Request's argument
+            label_col_name = request.args.get('label_col') # name of the label column
 
         df = pd.read_csv(UPLOAD_FILE_PATH + uploaded_filename)
         df['processed_text'] = df[text_col_name].apply(lambda x:noise_entity_removal(x))
@@ -47,23 +49,54 @@ def upload():
 
     return "Done"
 
+'''
+prediction_url = 'http://127.0.0.1:5000/prediction'
+param1 = {'text': 'this is just some random text for testing', 'actual_label':'positive', 'preferred_model': "xgboost svm"}
+prediction_response = requests.get(prediction_url, params=param1)
+prediction_response.text
+'''
 @app.route('/prediction', methods=['GET']) # user put in one sentence
 def make_prediction():
-    text, actual_label, preferred_model = request.args.get('text'), request.args.get('actual_label'), request.args.get('preferred_model')
+    preferred_models = "xgboost svm bert"
+    text, actual_label = request.args.get('text'), request.args.get('actual_label')
 
-    if " " in preferred_model:
-        preferred_model_list = preferred_model.split()
+    if request.args.get('preferred_model'):
+        preferred_models = request.args.get('preferred_model')
+
+    if " " in preferred_models:
+        preferred_models_list = preferred_models.split()
     else:
-        preferred_model_list = [preferred_model]
+        preferred_models_list = [preferred_models]
 
     processed_text = text_normalization(noise_entity_removal(text))
     processed_actual_label = label_to_integer(actual_label)
 
-    evaluation = evaluate_one(processed_text, processed_actual_label, target_models = preferred_model_list)
-    return jsonify(f'{evaluation}')
+    evaluation_output = evaluate_one(processed_text, processed_actual_label, target_models = preferred_models_list)
+    print(evaluation_output)
+    return jsonify(f'{evaluation_output}')
 
+'''
+predictions_url = 'http://127.0.0.1:5000/predictions'
+predictions_response = requests.get(predictions_url)
+predictions_response.text
+'''
 @app.route('/predictions', methods=['GET']) # user put in entire data (eg. reviews.csv)
 def make_predictions():
-    pass
+    preferred_models = "xgboost svm bert"
+    filename = "data/processed_uploaded_reviews.csv"
+    
+    if request.args.get('filename'):
+        filename = request.args.get('filename')
+    if request.args.get('preferred_model'):
+        preferred_models = request.args.get('preferred_model')
+
+    if " " in preferred_models:
+        preferred_models_list = preferred_models.split()
+    else:
+        preferred_models_list = [preferred_models]
+        
+    evaluation_output = evaluate(filename, preferred_models_list)
+    print(evaluation_output)
+    return "done"
 
 
