@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 from preprocess_fn import noise_entity_removal, mylemmatize, text_normalization, label_to_integer
 from evaluate import evaluate, evaluate_one
+from comparison import get_best_model
 
 app = Flask(__name__)
 UPLOAD_FILE_PATH = './data/'
@@ -60,8 +61,8 @@ def make_prediction():
     preferred_models = "xgboost svm bert"
     text, actual_label = request.args.get('text'), request.args.get('actual_label')
 
-    if request.args.get('preferred_model'):
-        preferred_models = request.args.get('preferred_model')
+    if request.args.get('preferred_models'):
+        preferred_models = request.args.get('preferred_models')
 
     if " " in preferred_models:
         preferred_models_list = preferred_models.split()
@@ -87,8 +88,8 @@ def make_predictions():
     
     if request.args.get('filename'):
         filename = request.args.get('filename')
-    if request.args.get('preferred_model'):
-        preferred_models = request.args.get('preferred_model')
+    if request.args.get('preferred_models'):
+        preferred_models = request.args.get('preferred_models')
 
     if " " in preferred_models:
         preferred_models_list = preferred_models.split()
@@ -97,6 +98,8 @@ def make_predictions():
         
     evaluation_output = evaluate(filename, preferred_models_list)
     print(evaluation_output)
+
+    print(get_best_model(evaluation_output))
     return "done"
 
 
