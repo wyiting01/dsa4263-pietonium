@@ -73,7 +73,7 @@ def evaluate(test_data_path = "../data/curated/reviews/cleaned_reviews.csv", tar
 
     # evaluating all the model stated in the argument
     for model in target_models: 
-        print(f"Evaluating {model} ...")
+        print(f"Evaluating {model.upper()} ...")
         model_result_dict = {}
 
         if model in ["svm", "xgboost"]: # necessary feature engineering
@@ -131,7 +131,7 @@ def evaluate_one(text, actual_label, target_models = ["svm", "xgboost", "bert"])
 
     # evaluating all the model stated in the argument
     for model in target_models: 
-        print(f"Evaluating {model} ...")
+        print(f"Evaluating {model.upper()} ...")
 
         if model in ["svm", "xgboost"]: # necessary feature engineering
             vectorizer = pickle.load(open(models_meta[model]["saved_tfidf"], "rb")) # load saved tfidf vectorizer
