@@ -102,4 +102,10 @@ def make_predictions():
     print(get_best_model(evaluation_output))
     return "done"
 
+@app.route('/get_topic', methods=['GET'])
+def get_topic():
+    pass
 
+@app.route('/get_topics', methods=['GET'])
+def get_topics():
+    pass
