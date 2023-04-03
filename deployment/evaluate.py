@@ -105,11 +105,12 @@ def evaluate(test_data_path = "../data/curated/reviews/cleaned_reviews.csv", tar
 
         # evaluation
         metric_dict = {}
-        cm = confusion_matrix(test_y, predicted_y).ravel() # tn, fp, fn, tp
+        cm_2d = confusion_matrix(test_y, predicted_y)
+        cm = cm_2d.ravel() # tn, fp, fn, tp
         accuracy = accuracy_score(test_y, predicted_y) # (tp+tn)/(tp+fp+tn+fn)
         precision = cm[3] / (cm[3] + cm[1]) # tp/(tp+fp)
         recall = cm[3] / (cm[3] + cm[2]) # tp/(tp+fn)
-        metric_dict["cm"] = cm
+        metric_dict["cm"] = cm_2d
         metric_dict["accuracy"] = accuracy
         metric_dict["precision"] = precision
         metric_dict["recall"] = recall

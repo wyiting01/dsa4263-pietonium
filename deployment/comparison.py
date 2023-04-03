@@ -21,12 +21,12 @@ def get_best_model(evaluation_output, metric = "accuracy", output_cm = True):
     best_metric_model_index = np.argmax(model_metric_list[:, 1])
     best_metric_model_name = model_metric_list[best_metric_model_index][0]
     
-    # if output_cm:
-    #     predicted_labels = evaluation_output[best_metric_model_name]["prediction"]
-    #     cm = confusion_matrix(actual_labels, predicted_labels) # actual_labels from global environment
-    #     cm_display = ConfusionMatrixDisplay(confusion_matrix = cm, display_labels = ['negative', 'positive'])
-    #     cm_display.plot()
-    #     plt.title(f'Confusion Matrix for {best_metric_model_name.upper()}')
-    #     plt.show()
+    if output_cm:
+        cm = evaluation_output[best_metric_model_name]["metrics"]["cm"]
+        cm_display = ConfusionMatrixDisplay(confusion_matrix = cm, display_labels = ['negative', 'positive'])
+        cm_display.plot()
+        plt.title(f'Confusion Matrix for {best_metric_model_name.upper()}')
+        plt.show()
+        return best_metric_model_name, model_metric_list
     
     return best_metric_model_name, model_metric_list
