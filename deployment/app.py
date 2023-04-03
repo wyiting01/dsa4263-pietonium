@@ -69,6 +69,8 @@ def upload():
         df['processed_text'] = df['processed_text'].apply(lambda x:text_normalization(x))
         df[label_col_name] = df[label_col_name].apply(lambda x:label_to_integer(x))
         df.to_csv(UPLOAD_FILE_PATH + "processed_" + uploaded_filename)
+        processed_filename = "processed_" + uploaded_filename
+        file_list.append(processed_filename)
 
         print(f'Sucessfully uploaded and preprocessed {uploaded_filename}!')
 
@@ -103,7 +105,8 @@ def make_prediction():
     processed_actual_label = label_to_integer(actual_label)
 
     evaluation_output = evaluate_one(processed_text, processed_actual_label, models_meta, target_models = preferred_models_list)
-    print(evaluation_output)
+    # print(evaluation_output)
+
     return jsonify(f'{evaluation_output}')
 
 '''
@@ -133,12 +136,16 @@ def make_predictions():
         preferred_models_list = preferred_models.split()
     else:
         preferred_models_list = [preferred_models]
-        
-    evaluation_output = evaluate(models_meta, filename, preferred_models_list)
-    print(evaluation_output)
 
-    print(get_best_model(evaluation_output))
-    return "done"
+    print('Evaluation:')    
+    evaluation_output = evaluate(models_meta, filename, preferred_models_list)
+    # print(evaluation_output)
+
+    print('Comparison:')
+    best_model, best_model_results = get_best_model(evaluation_output)
+    # print(best_model_results)
+
+    return jsonify(f'{best_model} {best_model_results}')
 
 @app.route('/get_topic', methods=['GET'])
 def get_topic():
