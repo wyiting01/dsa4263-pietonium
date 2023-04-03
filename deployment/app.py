@@ -5,10 +5,17 @@ import pandas as pd
 from preprocess_fn import noise_entity_removal, mylemmatize, text_normalization, label_to_integer
 from evaluate import evaluate, evaluate_one
 from comparison import get_best_model
+import os
 
 app = Flask(__name__)
 UPLOAD_FILE_PATH = './data/'
+file_list = [i for i in os.listdir("./data")]
 
+'''
+models_meta contains filepaths for:
+1. TF-IDF vectorizer for machine learning models (svm and xgboost)
+2. saved model weights for both maching learning models (svm and xgboost) and deep learning model (bert)
+'''
 models_meta = {}
 models_meta["svm"] = {
     "saved_tfidf": "saved_models/uy_svm1_vectorizer.pkl",
@@ -43,6 +50,7 @@ def upload():
         print('Uploading your file ...')
         uploaded_file = request.files['file']
         uploaded_filename = uploaded_file.filename
+        file_list.append(uploaded_filename)
         uploaded_file.save(f"{UPLOAD_FILE_PATH + secure_filename(uploaded_filename)}")
 
         # preprocess immediately after upload
@@ -65,6 +73,12 @@ def upload():
         print(f'Sucessfully uploaded and preprocessed {uploaded_filename}!')
 
     return "Done"
+
+@app.route('/list_files', methods=['GET'])
+def list_files():
+    print("Available Files:")
+    print(file_list)
+    return file_list 
 
 '''
 prediction_url = 'http://127.0.0.1:5000/prediction'
@@ -103,7 +117,15 @@ def make_predictions():
     filename = "data/processed_uploaded_reviews.csv"
     
     if request.args.get('filename'):
-        filename = request.args.get('filename')
+        input_filename = request.args.get('filename')
+        if input_filename in file_list:
+            filename = input_filename
+            filename = UPLOAD_FILE_PATH + "processed_" + filename
+            print("filename is", filename)
+        else:
+            print("No such file. Please upload you file via /upload")
+            return "No such file"
+
     if request.args.get('preferred_models'):
         preferred_models = request.args.get('preferred_models')
 
