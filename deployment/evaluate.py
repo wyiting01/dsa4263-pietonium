@@ -20,25 +20,6 @@ warnings.filterwarnings("ignore")
 
 # from sentiment_analysis.Deep_Learning.bert import (build_layers, read_data,
 #                                                    tokenization)
-
-
-'''
-models_meta contains filepaths for:
-1. TF-IDF vectorizer for machine learning models (svm and xgboost)
-2. saved model weights for both maching learning models (svm and xgboost) and deep learning model (bert)
-'''
-models_meta = {}
-models_meta["svm"] = {
-    "saved_tfidf": "saved_models/uy_svm1_vectorizer.pkl",
-    "saved_model": "saved_models/uy_svm1.pkl"
-    }
-models_meta["xgboost"] = {
-    "saved_tfidf": "saved_models/xgboost_vectorizer.pkl",
-    "saved_model": "saved_models/xgboost.pkl"
-    }
-models_meta["bert"] = {
-    "saved_model": None
-    }
     
 test_data_path = "../data/curated/reviews/cleaned_reviews.csv"
 # svm_linear_classifier = svm.LinearSVC()
@@ -60,7 +41,7 @@ FUNCTIONS FOR BERT MODEL
 #     model = build_layers()
 #     return model
 
-def evaluate(test_data_path = "../data/curated/reviews/cleaned_reviews.csv", target_models = ["svm", "xgboost", "bert"]): # ater running the preprocess file
+def evaluate(models_meta, test_data_path = "../data/curated/reviews/cleaned_reviews.csv", target_models = ["svm", "xgboost", "bert"]): # ater running the preprocess file
     '''
     target_models: "svm", "xgboost", "bert"
     '''
@@ -122,7 +103,7 @@ def evaluate(test_data_path = "../data/curated/reviews/cleaned_reviews.csv", tar
 
     return result_dict
 
-def evaluate_one(text, actual_label, target_models = ["svm", "xgboost", "bert"]): # ater running the preprocess file
+def evaluate_one(text, actual_label, models_meta, target_models = ["svm", "xgboost", "bert"]): # ater running the preprocess file
     '''
     target_models: "svm", "xgboost", "bert"
     '''

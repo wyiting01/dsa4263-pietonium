@@ -9,6 +9,22 @@ from comparison import get_best_model
 app = Flask(__name__)
 UPLOAD_FILE_PATH = './data/'
 
+models_meta = {}
+models_meta["svm"] = {
+    "saved_tfidf": "saved_models/uy_svm1_vectorizer.pkl",
+    "saved_model": "saved_models/uy_svm1.pkl"
+    }
+models_meta["xgboost"] = {
+    "saved_tfidf": "saved_models/xgboost_vectorizer.pkl",
+    "saved_model": "saved_models/xgboost.pkl"
+    }
+models_meta["bert"] = {
+    "saved_model": None
+    }
+models_meta["topic"] = {
+    "saved_model": None
+}
+
 @app.route('/')
 def hello():
     return 'Welcome from Group Pietonium!'
@@ -72,7 +88,7 @@ def make_prediction():
     processed_text = text_normalization(noise_entity_removal(text))
     processed_actual_label = label_to_integer(actual_label)
 
-    evaluation_output = evaluate_one(processed_text, processed_actual_label, target_models = preferred_models_list)
+    evaluation_output = evaluate_one(processed_text, processed_actual_label, models_meta, target_models = preferred_models_list)
     print(evaluation_output)
     return jsonify(f'{evaluation_output}')
 
@@ -96,7 +112,7 @@ def make_predictions():
     else:
         preferred_models_list = [preferred_models]
         
-    evaluation_output = evaluate(filename, preferred_models_list)
+    evaluation_output = evaluate(models_meta, filename, preferred_models_list)
     print(evaluation_output)
 
     print(get_best_model(evaluation_output))
