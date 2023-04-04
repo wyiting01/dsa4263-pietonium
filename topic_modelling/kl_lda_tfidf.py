@@ -247,6 +247,7 @@ if __name__ == '__main__':
     # Find the dominant topic for each review
     df_topic_sents_keywords, df_topic_per_key = format_topics_sentences(lda_tfidf_model, corpus_tfidf, data)
     df_topic_per_key.to_csv('./result/dominant_topic_in_each_sentence.csv')
+    # Dominant topics: Topic 1 - 3425 reviews, Topic 2 - 1751 reviews, Topic 0 - 268 reviews
 
     # Find the most representative review for each topic
     contribution_per_topic = most_representative_doc_per_topic(df_topic_sents_keywords)
@@ -271,7 +272,11 @@ if __name__ == '__main__':
     print((a[0]^result^a[1]^a[2])&a[0])
     print((a[1]^result^a[0]^a[2])&a[1])
     print((a[2]^result^a[1]^a[0])&a[2])
-
+    """
+    Topic 0: {'salt', 'noodles', 'water', 'pasta', 'soup'}
+    Topic 1: {'coffee', 'tea'}
+    Topic 2: {'dog', 'make', 'love', 'eat', 'food'}
+    """
     
 
 
