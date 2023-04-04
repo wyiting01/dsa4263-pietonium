@@ -200,7 +200,7 @@ if __name__ == '__main__':
     coherence_model_lda = CoherenceModel(model=lda_model_tfidf, texts = data_words, dictionary=id2word, coherence='c_v')
     coherence_lda = coherence_model_lda.get_coherence()
     print('Baseline Coherence Score: ', coherence_lda)
-    # Baseline Coherence Score: 0.3520876611629823
+    # Baseline Coherence Score: 0.31473331
 
     # create directory to keep results
     os.makedirs('result/', exist_ok=True)
@@ -210,14 +210,14 @@ if __name__ == '__main__':
     coherence_score_topic.to_csv('./result/coherence_score_topic.csv')
     print('Final Coherence Score:', final_score)
     print('Final number of topics used:', final_num_topics)
-    # Final Coherence Score: 0.5535325140273738 
-    # Final number of topics: 3
+    # Final Coherence Score: 0.553532514
+    # Final number of topics used: 3
     
     # final model with parameters yielding highest coherence score
     final_lda_model_tfidf = gensim.models.LdaMulticore(corpus=corpus_tfidf,
                                         id2word=id2word,
                                         num_topics=final_num_topics,
-                                        passes=2,
+                                        passes=10,
                                         workers=4)
     
     # Print the Keyword for each topic
@@ -247,6 +247,7 @@ if __name__ == '__main__':
     # Find the dominant topic for each review
     df_topic_sents_keywords, df_topic_per_key = format_topics_sentences(lda_tfidf_model, corpus_tfidf, data)
     df_topic_per_key.to_csv('./result/dominant_topic_in_each_sentence.csv')
+    # Dominant topics: Topic 1 - 3425 reviews, Topic 2 - 1751 reviews, Topic 0 - 268 reviews
 
     # Find the most representative review for each topic
     contribution_per_topic = most_representative_doc_per_topic(df_topic_sents_keywords)
@@ -256,8 +257,26 @@ if __name__ == '__main__':
     df_dominant_topic = topic_distri_across_doc(df_topic_sents_keywords)
     df_dominant_topic.head(final_num_topics).to_csv('./result/topic_distribution_across_documents.csv')
 
+    # convert the print_topics result to dictionary format
+    for idx, topic in lda_tfidf_model.print_topics(num_words=10):    
+        print('Topic: {} \nWords: {}'.format(idx, topic))
+    my_dict = {'Topic_' + str(i): [token for token, score in lda_tfidf_model.show_topic(i, topn=10)] for i in range(0, lda_tfidf_model.num_topics)}
+    a = []
+    for key,value in my_dict.items():
+        a.append(set(value))
 
+    # find the intersection between the 3 topics
+    result = a[0].intersection(a[1],a[2])
 
+    # Print the unique sets for each topic
+    print((a[0]^result^a[1]^a[2])&a[0])
+    print((a[1]^result^a[0]^a[2])&a[1])
+    print((a[2]^result^a[1]^a[0])&a[2])
+    """
+    Topic 0: {'salt', 'noodles', 'water', 'pasta', 'soup'}
+    Topic 1: {'coffee', 'tea'}
+    Topic 2: {'dog', 'make', 'love', 'eat', 'food'}
+    """
     
 
 

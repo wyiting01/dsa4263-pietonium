@@ -57,7 +57,7 @@ def make_trigrams(texts, bigram_text, trigram_text,):
     return [trigram_mod[bigram_mod[doc]] for doc in texts]    
 
 def save_result(path, y_test_algo, y_predicted_algo):
-    report = classification_report(y_test_algo, y_predicted_algo, output_dict=True)
+    report = classification_report(y_test_algo, y_predicted_algo, output_dict=True,  zero_division=0)
     classfication_df = pd.DataFrame(report).transpose()
     cm = confusion_matrix(y_test,  y_predicted_algo)
     confusion_matrix_df = pd.DataFrame(cm)
@@ -128,8 +128,9 @@ if __name__ == '__main__':
     lr_y_predict = lr_tfidf.predict(x_test_scale) 
     # save classification report and confusion matrix in csv
     save_result('./result/logistic_regression_result.csv', y_test, lr_y_predict)
-    # Accuracy: 0.975206612
+    # Accuracy: 0.97979798
 
+    
     # Naive Bayes
     # Unable to use scaled data for naive bayes as it disallowed negative values
     nb_tfidf = MultinomialNB().fit(x_train, y_train)
@@ -137,8 +138,8 @@ if __name__ == '__main__':
     nb_y_predict = nb_tfidf.predict(x_test)
     # save classification report and confusion matrix in csv
     save_result('./result/naive_bayes_results.csv', y_test, nb_y_predict)
-    # Accuracy: 0.958677686
-
+    # Accuracy: 0.898071625
+   
     # Logistic Regression Mini-Batch SGD
     sgd_tfidf = linear_model.SGDClassifier(
         max_iter=1000,
@@ -151,5 +152,6 @@ if __name__ == '__main__':
     save_result('./result/sgd_results.csv', y_test, sgd_y_predict)
     # Accuracy: 0.974288338
 
+   
    
     
