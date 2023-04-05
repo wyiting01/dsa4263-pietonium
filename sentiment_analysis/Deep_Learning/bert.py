@@ -3,6 +3,9 @@ from tqdm import tqdm
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn.metrics import classification_report
 
 import tensorflow as tf
 
@@ -123,4 +126,51 @@ def build_layers():
     model = tf.keras.Model(inputs=[input_ids,mask], outputs=y)
     #model.summary()
     return model
+
+def load_model():
+    pass
+
+def evaluate_model(model,test_data):
+    """Function to evaluate model and output confusion matrix with accuracy score
+    Test data input 
+    """
+    # Run the model on the test data
+    predicted = model.predict(test_data)
+
+    y_pred = tf.nn.softmax(predicted)
+    y_pred_argmax = tf.math.argmax(y_pred, axis=1)
+
+    # unbatching the test data to obtain the labels
+    test_un = test_data.unbatch()
+    lst = []
+
+    for features, label in test_un.take(-1):
+        lab = tf.math.argmax(label).numpy()
+        lst.append(lab)
+        
+    arr = np.array(lst)
+    # obtain tensor object
+    y_true = tf.convert_to_tensor(arr)
+
+    visualize_confusion_matrix(y_pred_argmax, y_true)
+
+
+
+def visualize_confusion_matrix(y_pred_argmax, y_true):
+    """
+    :param y_pred_arg: This is an array with values that are 0 or 1
+    :param y_true: This is an array with values that are 0 or 1
+    :return:
+    """
+
+    cm = tf.math.confusion_matrix(y_true, y_pred_argmax).numpy()
+    con_mat_df = pd.DataFrame(cm)
+    
+    print(classification_report(y_pred_argmax, y_true))
+
+    sns.heatmap(con_mat_df, annot=True, fmt='g', cmap=plt.cm.Blues)
+    plt.tight_layout()
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
+    plt.show()
 
