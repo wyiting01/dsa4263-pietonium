@@ -16,31 +16,56 @@ with st.container():
 st.write("---")
 
 # Allow user to choose if they want to test a sentence or file
-with st.container():
 
-    # Option : Single sentence / Multiple sentences
-    option = st.selectbox(
-        "Would you like to test the prediction on a single review or on multiple reviews?",
-        ['A Single Review', 'Multiple Reviews'])
+# Option : Single sentence / Multiple sentences
+option = st.selectbox(
+    "Would you like to test the prediction on a single review or on multiple reviews?",
+    ["A Single Review", "Multiple Reviews"])
     
-    if option == 'A Single Review': # If user select this option, do
-        st.text_input("Please enter in your review")
+if option == "A Single Review": # If user select this option, do
+    st.text_input("Please enter in your review")
 
-    elif option == 'Multiple Reviews': # If user select this option, do
-        uploaded_file = st.file_uploader("Please choose a CSV file")
+    # Ask if they have a sentiment to check against
+    option_sentiment_single = st.selectbox(
+        "Do you have a label column to check our prediction against?",
+        ["No", "Yes"]
+    )
 
-        if uploaded_file is not None:
-            # To read file as bytes
-            bytes_data = uploaded_file.getvalue()
-            st.write(bytes_data)
+    if option_sentiment_single == "Yes":
+        st.text_input("Please input the correct sentiment.")
 
-            # To convert a string based IO
-            stringio = StringIO(uploaded_file.getvalue().decode("utf-8"))
-            st.write(stringio)
+elif option == "Multiple Reviews": # If user select this option, do
+    uploaded_file = st.file_uploader("Please choose a CSV file")
 
-            # Can be used wherever a "file-like" object is accepted
-            dataframe = pd.read_csv(uploaded_file)
-            st.write(dataframe)
+    if uploaded_file is not None:
+        # To read file as bytes
+        bytes_data = uploaded_file.getvalue()
+        st.write(bytes_data)
+
+        # To convert a string based IO
+        stringio = StringIO(uploaded_file.getvalue().decode("utf-8"))
+        st.write(stringio)
+
+        # Can be used wherever a "file-like" object is accepted
+        dataframe = pd.read_csv(uploaded_file)
+        st.write(dataframe)
+
+    # Text column parameter
+    TEXT_COL = st.text_input("Please enter in your review column name.")
+
+    # Ask if they have a sentiment column to check against
+    option_sentiment_multiple = st.selectbox(
+        "Do you have a label column to check our prediction against?",
+        ["No", "Yes"]
+    )
+
+    if option_sentiment_multiple == "Yes":
+        st.text_input("Please enter in your sentiment column name.")
+
+# Create button to start prediction
+if st.button('Predict Sentiment'):
+    st.write("Predicting your reviews...This may take a while, please wait patiently :folded_hands:")
+
 
 
 
