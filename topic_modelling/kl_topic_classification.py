@@ -56,16 +56,23 @@ def make_trigrams(texts, bigram_text, trigram_text,):
     trigram_mod = gensim.models.phrases.Phraser(trigram_text)
     return [trigram_mod[bigram_mod[doc]] for doc in texts]    
 
+# save results 
 def save_result(path, y_test_algo, y_predicted_algo):
+    # generate classification report
     report = classification_report(y_test_algo, y_predicted_algo, output_dict=True,  zero_division=0)
+    # convert classification report to dataframe 
     classfication_df = pd.DataFrame(report).transpose()
+    # generate confusion matrix 
     cm = confusion_matrix(y_test,  y_predicted_algo)
+    # convert from matrix to dataframe
     confusion_matrix_df = pd.DataFrame(cm)
+    # save both confusion matrix and classification report into one csv file
     with open(path,'a') as f:
         for df in [classfication_df, confusion_matrix_df]:
             df.to_csv(f)
             f.write("\n")
 
+# convert corpus to vector in order to feed it into sklearn models
 def create_vectors(corpuss, data, lda_model, k):
     # create tf-idf model
     tfidf_corpus = models.TfidfModel(corpuss, smartirs='ntc')
@@ -73,7 +80,7 @@ def create_vectors(corpuss, data, lda_model, k):
     vecs_lst = []
     # get the feature vectors for every review
     for i in range(len(data)):
-        # ensures that we’ll capture the instances where a review is presented with 0% in some topics, and the representation for each review will add up to 100%.
+        # capture the instances where a review is presented with 0% in some topics, and the representation for each review will add up to 100%.
         top_topics = lda_model.get_document_topics(corpus_tfidf[i], minimum_probability=0.0)
         topic_vec = [top_topics[i][1] for i in range(k)]
         vecs_lst.append(topic_vec)
