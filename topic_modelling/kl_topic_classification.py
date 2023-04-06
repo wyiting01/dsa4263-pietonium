@@ -56,16 +56,23 @@ def make_trigrams(texts, bigram_text, trigram_text,):
     trigram_mod = gensim.models.phrases.Phraser(trigram_text)
     return [trigram_mod[bigram_mod[doc]] for doc in texts]    
 
+# save results 
 def save_result(path, y_test_algo, y_predicted_algo):
-    report = classification_report(y_test_algo, y_predicted_algo, output_dict=True)
+    # generate classification report
+    report = classification_report(y_test_algo, y_predicted_algo, output_dict=True,  zero_division=0)
+    # convert classification report to dataframe 
     classfication_df = pd.DataFrame(report).transpose()
+    # generate confusion matrix 
     cm = confusion_matrix(y_test,  y_predicted_algo)
+    # convert from matrix to dataframe
     confusion_matrix_df = pd.DataFrame(cm)
+    # save both confusion matrix and classification report into one csv file
     with open(path,'a') as f:
         for df in [classfication_df, confusion_matrix_df]:
             df.to_csv(f)
             f.write("\n")
 
+# convert corpus to vector in order to feed it into sklearn models
 def create_vectors(corpuss, data, lda_model, k):
     # create tf-idf model
     tfidf_corpus = models.TfidfModel(corpuss, smartirs='ntc')
@@ -73,7 +80,7 @@ def create_vectors(corpuss, data, lda_model, k):
     vecs_lst = []
     # get the feature vectors for every review
     for i in range(len(data)):
-        # ensures that we’ll capture the instances where a review is presented with 0% in some topics, and the representation for each review will add up to 100%.
+        # capture the instances where a review is presented with 0% in some topics, and the representation for each review will add up to 100%.
         top_topics = lda_model.get_document_topics(corpus_tfidf[i], minimum_probability=0.0)
         topic_vec = [top_topics[i][1] for i in range(k)]
         vecs_lst.append(topic_vec)
@@ -128,8 +135,9 @@ if __name__ == '__main__':
     lr_y_predict = lr_tfidf.predict(x_test_scale) 
     # save classification report and confusion matrix in csv
     save_result('./result/logistic_regression_result.csv', y_test, lr_y_predict)
-    # Accuracy: 0.975206612
+    # Accuracy: 0.97979798
 
+    
     # Naive Bayes
     # Unable to use scaled data for naive bayes as it disallowed negative values
     nb_tfidf = MultinomialNB().fit(x_train, y_train)
@@ -137,8 +145,8 @@ if __name__ == '__main__':
     nb_y_predict = nb_tfidf.predict(x_test)
     # save classification report and confusion matrix in csv
     save_result('./result/naive_bayes_results.csv', y_test, nb_y_predict)
-    # Accuracy: 0.958677686
-
+    # Accuracy: 0.898071625
+   
     # Logistic Regression Mini-Batch SGD
     sgd_tfidf = linear_model.SGDClassifier(
         max_iter=1000,
@@ -151,5 +159,6 @@ if __name__ == '__main__':
     save_result('./result/sgd_results.csv', y_test, sgd_y_predict)
     # Accuracy: 0.974288338
 
+   
    
     
