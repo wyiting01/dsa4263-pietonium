@@ -41,11 +41,11 @@ FUNCTIONS FOR BERT MODEL
 #     model = build_layers()
 #     return model
 
-def evaluate(models_meta, test_data_path = "../data/curated/reviews/cleaned_reviews.csv", target_models = ["svm", "xgboost", "bert"]): # ater running the preprocess file
+def evaluate(models_meta, test_data, target_models = ["svm", "xgboost", "bert"]): # ater running the preprocess file
     '''
     target_models: "svm", "xgboost", "bert"
     '''
-    test_data = pd.read_csv(test_data_path)
+    # test_data = pd.read_csv(test_data_path)
     test_data_feature = test_data['processed_text'].values.tolist()
     test_y = test_data['Sentiment'].values.tolist()
 

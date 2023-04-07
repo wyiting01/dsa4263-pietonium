@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify
 from werkzeug.utils import secure_filename
 import numpy as np
 import pandas as pd
-from preprocess_fn import noise_entity_removal, mylemmatize, text_normalization, label_to_integer
+from preprocess_fn import noise_entity_removal, mylemmatize, text_normalization, label_to_integer, preprocess
 from evaluate import evaluate, evaluate_one
 from comparison import get_best_model
 import os
@@ -65,11 +65,10 @@ def upload():
             label_col_name = request.args.get('label_col') # name of the label column
 
         df = pd.read_csv(UPLOAD_FILE_PATH + uploaded_filename)
-        df['processed_text'] = df[text_col_name].apply(lambda x:noise_entity_removal(x))
-        df['processed_text'] = df['processed_text'].apply(lambda x:text_normalization(x))
-        if label_col_name in df.columns: # check if the column is present
-            if df['label_col_name'].dtypes != 'int64': # check if the sentiment labels type, if its not integer then preprocess it
-                df[label_col_name] = df[label_col_name].apply(lambda x:label_to_integer(x))
+        if label_col_name in df.columns:
+            df = preprocess(df, label_col_name = label_col_name)
+        else:
+            df = preprocess(df)
         df.to_csv(UPLOAD_FILE_PATH + "processed_" + uploaded_filename)
         processed_filename = "processed_" + uploaded_filename
         file_list.append(processed_filename)
@@ -139,8 +138,9 @@ def make_predictions():
     else:
         preferred_models_list = [preferred_models]
 
-    print('Evaluation:')    
-    evaluation_output = evaluate(models_meta, filename, preferred_models_list)
+    print('Evaluation:')
+    data = pd.read_csv(filename)
+    evaluation_output = evaluate(models_meta, data, preferred_models_list)
     # print(evaluation_output)
 
     print('Comparison:')
