@@ -67,7 +67,9 @@ def upload():
         df = pd.read_csv(UPLOAD_FILE_PATH + uploaded_filename)
         df['processed_text'] = df[text_col_name].apply(lambda x:noise_entity_removal(x))
         df['processed_text'] = df['processed_text'].apply(lambda x:text_normalization(x))
-        df[label_col_name] = df[label_col_name].apply(lambda x:label_to_integer(x))
+        if label_col_name in df.columns: # check if the column is present
+            if df['label_col_name'].dtypes != 'int64': # check if the sentiment labels type, if its not integer then preprocess it
+                df[label_col_name] = df[label_col_name].apply(lambda x:label_to_integer(x))
         df.to_csv(UPLOAD_FILE_PATH + "processed_" + uploaded_filename)
         processed_filename = "processed_" + uploaded_filename
         file_list.append(processed_filename)
