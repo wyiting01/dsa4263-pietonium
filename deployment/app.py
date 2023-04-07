@@ -31,12 +31,16 @@ models_meta["bert"] = {
     "saved_model": None
     }
 models_meta["topic"] = {
+    "saved_tfidf": None,
     "saved_model": None
 }
 
 # prepare vectorizer and saved_model for predictions
 vectorizer = pickle.load(open(models_meta["xgboost"]["saved_tfidf"], "rb"))
 saved_model = pickle.load(open(models_meta["xgboost"]["saved_model"], "rb"))
+
+topic_vectorizer = pickle.load(open(models_meta["topic"]["saved_tfidf"], "rb"))
+topic_saved_model = pickle.load(open(models_meta["topic"]["saved_model"], "rb"))
 
 @app.route('/')
 def hello():
@@ -142,8 +146,33 @@ def make_predictions():
 
 @app.route('/get_topic', methods=['GET'])
 def get_topic():
-    pass
+    text = request.args.get('text')
+    processed_text = text_normalization(noise_entity_removal(text))
+    test_x = topic_vectorizer.transform([processed_text])
+    predicted_y = topic_saved_model.predict(test_x)[0]
+    return f'Predicted Topic: {predicted_y}'
 
 @app.route('/get_topics', methods=['GET'])
 def get_topics():
-    pass
+    filename = "data/processed_uploaded_reviews.csv"
+    text_col_name = 'processed_text'
+    
+    if request.args.get('filename'):
+        input_filename = request.args.get('filename')
+        if input_filename in file_list:
+            filename = input_filename
+            filename = UPLOAD_FILE_PATH + "processed_" + filename
+            print("filename is", filename)
+        else:
+            print("No such file. Please upload you file via /upload")
+            return "No such file"
+        
+    if request.args.get('text_col_name'):
+        text_col_name = request.args.get('text_col_name')
+
+    data = pd.read_csv(filename)
+    test_data_feature = data[text_col_name].values.tolist()
+    test_x = topic_vectorizer.transform(test_data_feature)
+    predicted_y = topic_saved_model.predict(test_x).tolist()
+
+    return jsonify(f'{predicted_y}')
