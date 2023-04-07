@@ -6,7 +6,9 @@ from preprocess_fn import noise_entity_removal, mylemmatize, text_normalization,
 from evaluate import evaluate, evaluate_one
 from comparison import get_best_model
 import os
+import pickle
 
+# Initialisation
 app = Flask(__name__)
 UPLOAD_FILE_PATH = './data/'
 file_list = [i for i in os.listdir("./data")]
@@ -31,6 +33,10 @@ models_meta["bert"] = {
 models_meta["topic"] = {
     "saved_model": None
 }
+
+# prepare vectorizer and saved_model for predictions
+vectorizer = pickle.load(open(models_meta["xgboost"]["saved_tfidf"], "rb"))
+saved_model = pickle.load(open(models_meta["xgboost"]["saved_model"], "rb"))
 
 @app.route('/')
 def hello():
@@ -77,48 +83,42 @@ def upload():
 
     return "Done"
 
+'''
+requests.get('http://127.0.0.1:5000/list_files')
+'''
 @app.route('/list_files', methods=['GET'])
 def list_files():
     print("Available Files:")
     print(file_list)
-    return file_list 
+    return file_list
 
 '''
+bad_text = "This product was a complete disappointment. Poor quality and unreliable performance. Not recommended."
+good_text = "It so good, I will definitely buy it again!"
 prediction_url = 'http://127.0.0.1:5000/prediction'
-param1 = {'text': 'this is just some random text for testing', 'actual_label':'positive', 'preferred_model': "xgboost svm"}
+param1 = {'text': good_text}
 prediction_response = requests.get(prediction_url, params=param1)
 prediction_response.text
 '''
 @app.route('/prediction', methods=['GET']) # user put in one sentence
 def make_prediction():
-    preferred_models = "xgboost svm bert"
-    text, actual_label = request.args.get('text'), request.args.get('actual_label')
-
-    if request.args.get('preferred_models'):
-        preferred_models = request.args.get('preferred_models')
-
-    if " " in preferred_models:
-        preferred_models_list = preferred_models.split()
-    else:
-        preferred_models_list = [preferred_models]
-
+    text = request.args.get('text')
     processed_text = text_normalization(noise_entity_removal(text))
-    processed_actual_label = label_to_integer(actual_label)
-
-    evaluation_output = evaluate_one(processed_text, processed_actual_label, models_meta, target_models = preferred_models_list)
-    # print(evaluation_output)
-
-    return jsonify(f'{evaluation_output}')
+    # assume final model is xgboost
+    test_x = vectorizer.transform([processed_text])
+    predicted_y = saved_model.predict(test_x)[0]
+    return f'Predicted Sentiment: {predicted_y}'
 
 '''
 predictions_url = 'http://127.0.0.1:5000/predictions'
-predictions_response = requests.get(predictions_url)
+params2 = {'filename':'uploaded_reviews.csv'}
+predictions_response = requests.get(predictions_url, params=params2)
 predictions_response.text
 '''
 @app.route('/predictions', methods=['GET']) # user put in entire data (eg. reviews.csv)
 def make_predictions():
-    preferred_models = "xgboost svm bert"
     filename = "data/processed_uploaded_reviews.csv"
+    text_col_name = 'processed_text'
     
     if request.args.get('filename'):
         input_filename = request.args.get('filename')
@@ -129,25 +129,16 @@ def make_predictions():
         else:
             print("No such file. Please upload you file via /upload")
             return "No such file"
+        
+    if request.args.get('text_col_name'):
+        text_col_name = request.args.get('text_col_name')
 
-    if request.args.get('preferred_models'):
-        preferred_models = request.args.get('preferred_models')
-
-    if " " in preferred_models:
-        preferred_models_list = preferred_models.split()
-    else:
-        preferred_models_list = [preferred_models]
-
-    print('Evaluation:')
     data = pd.read_csv(filename)
-    evaluation_output = evaluate(models_meta, data, preferred_models_list)
-    # print(evaluation_output)
+    test_data_feature = data[text_col_name].values.tolist()
+    test_x = vectorizer.transform(test_data_feature)
+    predicted_y = saved_model.predict(test_x).tolist()
 
-    print('Comparison:')
-    best_model, best_model_results = get_best_model(evaluation_output)
-    # print(best_model_results)
-
-    return jsonify(f'{best_model} {best_model_results}')
+    return jsonify(f'{predicted_y}')
 
 @app.route('/get_topic', methods=['GET'])
 def get_topic():
