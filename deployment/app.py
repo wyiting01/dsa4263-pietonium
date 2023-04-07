@@ -144,7 +144,7 @@ def make_predictions():
 
     return jsonify(f'{predicted_y}')
 
-@app.route('/get_topic', methods=['GET'])
+@app.route('/get_topic', methods=['GET']) # havent try yet
 def get_topic():
     text = request.args.get('text')
     processed_text = text_normalization(noise_entity_removal(text))
@@ -152,7 +152,7 @@ def get_topic():
     predicted_y = topic_saved_model.predict(test_x)[0]
     return f'Predicted Topic: {predicted_y}'
 
-@app.route('/get_topics', methods=['GET'])
+@app.route('/get_topics', methods=['GET']) # havent try yet
 def get_topics():
     filename = "data/processed_uploaded_reviews.csv"
     text_col_name = 'processed_text'
