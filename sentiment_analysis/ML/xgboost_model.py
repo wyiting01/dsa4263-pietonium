@@ -11,7 +11,7 @@ np.random.seed(1)
 
 # write functions to illustrate pipeline
 # 1. Vectorizer
-def instantiate_tfidf_vectorizer(x_train):
+def xgb_instantiate_tfidf_vectorizer(x_train):
     vectorizer = TfidfVectorizer(max_df=0.8, sublinear_tf=True)
     vectorizer.fit(x_train)
     return vectorizer
@@ -19,18 +19,18 @@ def instantiate_tfidf_vectorizer(x_train):
 # train_vectors = vectorizer.fit_transform(x_train)
 # test_vectors = vectorizer.transform(x_test)
 
-def instantiate_xgb_model(x_train, y_train):
+def xgb_instantiate_xgb_model(x_train, y_train):
     xgb_model = XGBClassifier(random_state = 1)
     xgb_model.fit(x_train, y_train)
     return xgb_model
 
 # x_test_predicted = xgb_model.predict(test_vectors)
 
-def get_classification_report(actual, predicted):
+def xgb_get_classification_report(actual, predicted):
     report = classification_report(actual, predicted, output_dict=True)
     return report
 
-def print_classifcation_rerport(report):
+def xgb_print_classifcation_rerport(report):
     print('Positive:')
     print('---------')
     for metric, score in report['1'].items():
@@ -45,8 +45,8 @@ def print_classifcation_rerport(report):
     print('--------')
     print(f"accuracy: {round(report['accuracy'], 3)}")
 
-def get_confusion_matrix(actual, predicted):
-    cm = confusion_matrix(y_test, x_test_predicted)
+def xgb_get_confusion_matrix(actual, predicted):
+    cm = confusion_matrix(actual, predicted)
     cm_display = ConfusionMatrixDisplay(confusion_matrix = cm, display_labels = ['negative', 'positive'])
     cm_display.plot()
     plt.title('Confusion Matrix')
@@ -93,5 +93,5 @@ if __name__ == '__main__':
     plt.show()
 
     # save TF-IDF vectorizer and XGBoost model
-    # pickle.dump(vectorizer, open('../../model/xgboost_vectorizer.pkl', 'wb'))
-    # pickle.dump(xgb_model, open('../../model/xgboost.pkl', 'wb'))
+    pickle.dump(vectorizer, open('../../model/xgboost_vectorizer.pkl', 'wb'))
+    pickle.dump(xgb_model, open('../../model/xgboost.pkl', 'wb'))
