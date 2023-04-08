@@ -7,6 +7,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 import numpy as np
+import pickle 
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.naive_bayes import MultinomialNB
@@ -130,14 +131,15 @@ if __name__ == '__main__':
     os.makedirs('result/', exist_ok=True)
 
     # Logistic Regression 
-    lr_tfidf = LogisticRegression(solver = 'liblinear').fit(x_train_scale, y_train)  # model 
+    lr_tfidf = LogisticRegression(solver = 'liblinear').fit(x_train_scale, y_train)   
+    # save model
+    pickle.dump(lr_tfidf, open('../model/logistic_regression_topic_classification.pkl', 'wb'))
     # predict test topic
     lr_y_predict = lr_tfidf.predict(x_test_scale) 
     # save classification report and confusion matrix in csv
     save_result('./result/logistic_regression_result.csv', y_test, lr_y_predict)
     # Accuracy: 0.97979798
 
-    
     # Naive Bayes
     # Unable to use scaled data for naive bayes as it disallowed negative values
     nb_tfidf = MultinomialNB().fit(x_train, y_train)
@@ -157,7 +159,9 @@ if __name__ == '__main__':
     sgd_y_predict = sgd_tfidf.predict(x_test_scale)
     # save classification report and confusion matrix in csv
     save_result('./result/sgd_results.csv', y_test, sgd_y_predict)
-    # Accuracy: 0.974288338
+    # Accuracy: 0.977961433
+
+
 
    
    
