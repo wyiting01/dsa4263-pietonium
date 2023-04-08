@@ -86,3 +86,16 @@ def label_to_integer(sentiment_label):
         return 0
     else:
         return None
+    
+def preprocess(dataset, text_col_name = 'Text', label_col_name = None):
+    # process the text column
+    df = dataset.copy()
+    df['processed_text'] = df[text_col_name].apply(lambda x:noise_entity_removal(x))
+    df['processed_text'] = df['processed_text'].apply(lambda x:text_normalization(x))
+
+    # process the label column if present and if its not in int64 type
+    if label_col_name and label_col_name in df.columns:
+        if df[label_col_name].dtypes != 'int64':
+            df[label_col_name] = df[label_col_name].apply(lambda x:label_to_integer(x))
+        
+    return df
