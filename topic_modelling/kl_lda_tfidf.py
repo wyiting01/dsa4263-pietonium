@@ -133,26 +133,6 @@ def format_topics_sentences(chosen_model, corpus, texts):
     df_dominant_topic.columns = ['Document_No', 'Dominant_Topic', 'Topic_Perc_Contrib', 'Keywords', 'Text']
     return(sent_topics_df, df_dominant_topic)
 
-# Find the most representative review for each topic
-# purpose: topic keyword might not give much sense of what the topic is. Hence, find some reviews and infer the topic 
-def most_representative_doc_per_topic(dorminant_topic_each_sent):
-    # Group top 5 sentences under each topic
-    sent_topics_sorteddf = pd.DataFrame()
-
-    sent_topics_outdf_grpd = dorminant_topic_each_sent.groupby('Dominant_Topic')
-
-    for i, grp in sent_topics_outdf_grpd:
-        sent_topics_sorteddf = pd.concat([sent_topics_sorteddf, 
-                                            grp.sort_values(['Perc_Contribution'], ascending=[0]).head(1)], 
-                                            axis=0)
-
-    # Reset Index    
-    sent_topics_sorteddf.reset_index(drop=True, inplace=True)
-
-    # Format
-    sent_topics_sorteddf.columns = ['Topic_Num', "Topic_Perc_Contrib", "Keywords", "Text"]
-    return(sent_topics_sorteddf)
-
 # Topic distribution across reviews
 def topic_distri_across_doc(dorminant_topic_each_sent):
     # Number of Documents for Each Topic
@@ -248,10 +228,6 @@ if __name__ == '__main__':
     df_topic_sents_keywords, df_topic_per_key = format_topics_sentences(lda_tfidf_model, corpus_tfidf, data)
     df_topic_per_key.to_csv('./result/dominant_topic_in_each_sentence.csv')
     # Dominant topics: Topic 1 - 3425 reviews, Topic 2 - 1751 reviews, Topic 0 - 268 reviews
-
-    # Find the most representative review for each topic
-    contribution_per_topic = most_representative_doc_per_topic(df_topic_sents_keywords)
-    contribution_per_topic.to_csv('./result/most_representative_document_for_each_topic.csv')
 
     # Topic distribution across documents
     df_dominant_topic = topic_distri_across_doc(df_topic_sents_keywords)
