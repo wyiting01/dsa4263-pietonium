@@ -79,6 +79,7 @@ def create_vectors(corpuss, data, lda_model, k, type_of_vector):
     # create tf-idf model
     tfidf_corpus = models.TfidfModel(corpuss, smartirs='ntc')
     corpus_tfidf = tfidf_corpus[corpuss]
+    # save corpus 
     corpus_tfidf_path = os.path.join('../model/kl_lda_tfidf_'+type_of_vector+'.mm')
     corpora.MmCorpus.serialize(corpus_tfidf_path, corpus_tfidf)
     vecs_lst = []
