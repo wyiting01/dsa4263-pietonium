@@ -13,6 +13,7 @@ from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.naive_bayes import MultinomialNB
 from sklearn import linear_model
 import os
+from sklearn.svm import SVC
 
 # split a sentence into a list 
 def split_sentence(text):
@@ -78,6 +79,7 @@ def create_vectors(corpuss, data, lda_model, k, type_of_vector):
     # create tf-idf model
     tfidf_corpus = models.TfidfModel(corpuss, smartirs='ntc')
     corpus_tfidf = tfidf_corpus[corpuss]
+    # save corpus 
     corpus_tfidf_path = os.path.join('../model/kl_lda_tfidf_'+type_of_vector+'.mm')
     corpora.MmCorpus.serialize(corpus_tfidf_path, corpus_tfidf)
     vecs_lst = []
@@ -133,6 +135,16 @@ if __name__ == '__main__':
     # create directory to keep results
     os.makedirs('result/', exist_ok=True)
 
+    # SVM
+    svm_tfidf = SVC(random_state= 1, kernel='rbf', decision_function_shape='ovo').fit(x_train_scale, y_train)
+    # save model
+    pickle.dump(svm_tfidf, open('../model/svm_topic_classification.pkl', 'wb'))
+    # predict test topic
+    svm_y_predict = svm_tfidf.predict(x_test_scale) 
+    # save classification report and confusion matrix in csv
+    save_result('./result/svm_result.csv', y_test, svm_y_predict)
+    # Accuracy: 0.97979798
+
     # Logistic Regression 
     lr_tfidf = LogisticRegression(solver = 'liblinear').fit(x_train_scale, y_train)   
     # save model
@@ -164,7 +176,7 @@ if __name__ == '__main__':
     save_result('./result/sgd_results.csv', y_test, sgd_y_predict)
     # Accuracy: 0.977961433
 
-
+    
 
 
    
