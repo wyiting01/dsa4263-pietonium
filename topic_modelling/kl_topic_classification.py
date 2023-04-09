@@ -7,6 +7,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 import numpy as np
+import pickle 
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.naive_bayes import MultinomialNB
@@ -73,10 +74,12 @@ def save_result(path, y_test_algo, y_predicted_algo):
             f.write("\n")
 
 # convert corpus to vector in order to feed it into sklearn models
-def create_vectors(corpuss, data, lda_model, k):
+def create_vectors(corpuss, data, lda_model, k, type_of_vector):
     # create tf-idf model
     tfidf_corpus = models.TfidfModel(corpuss, smartirs='ntc')
     corpus_tfidf = tfidf_corpus[corpuss]
+    corpus_tfidf_path = os.path.join('../model/kl_lda_tfidf_'+type_of_vector+'.mm')
+    corpora.MmCorpus.serialize(corpus_tfidf_path, corpus_tfidf)
     vecs_lst = []
     # get the feature vectors for every review
     for i in range(len(data)):
@@ -110,11 +113,12 @@ if __name__ == '__main__':
     test_data = test.Text.values.tolist()
     x_train_corpus = preprocess(train_data, dictionary) 
     x_test_corpus = preprocess(test_data, dictionary)
-    
+
     # 3 is the optimal number of topics that LDA using Tfidf choses
-    train_vecs = create_vectors(x_train_corpus, train, lda_tfidf_model, 3)
-    test_vecs = create_vectors(x_test_corpus, test, lda_tfidf_model, 3)
+    train_vecs = create_vectors(x_train_corpus, train, lda_tfidf_model, 3, 'train')
+    test_vecs = create_vectors(x_test_corpus, test, lda_tfidf_model, 3, 'test')
     
+
     # convert to numpy array 
     x_train = np.array(train_vecs)
     y_train = np.array(y_train)
@@ -125,19 +129,20 @@ if __name__ == '__main__':
     scaler = StandardScaler()
     x_train_scale = scaler.fit_transform(x_train)
     x_test_scale = scaler.fit_transform(x_test)
-    
+
     # create directory to keep results
     os.makedirs('result/', exist_ok=True)
 
     # Logistic Regression 
-    lr_tfidf = LogisticRegression(solver = 'liblinear').fit(x_train_scale, y_train)  # model 
+    lr_tfidf = LogisticRegression(solver = 'liblinear').fit(x_train_scale, y_train)   
+    # save model
+    pickle.dump(lr_tfidf, open('../model/logistic_regression_topic_classification.pkl', 'wb'))
     # predict test topic
     lr_y_predict = lr_tfidf.predict(x_test_scale) 
     # save classification report and confusion matrix in csv
     save_result('./result/logistic_regression_result.csv', y_test, lr_y_predict)
     # Accuracy: 0.97979798
 
-    
     # Naive Bayes
     # Unable to use scaled data for naive bayes as it disallowed negative values
     nb_tfidf = MultinomialNB().fit(x_train, y_train)
@@ -157,7 +162,10 @@ if __name__ == '__main__':
     sgd_y_predict = sgd_tfidf.predict(x_test_scale)
     # save classification report and confusion matrix in csv
     save_result('./result/sgd_results.csv', y_test, sgd_y_predict)
-    # Accuracy: 0.974288338
+    # Accuracy: 0.977961433
+
+
+
 
    
    
