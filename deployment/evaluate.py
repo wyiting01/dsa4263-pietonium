@@ -7,9 +7,9 @@ import warnings
 import numpy as np
 import pandas as pd
 import tensorflow as tf
+from tensorflow.keras.optimizers.schedules import PolynomialDecay
 from sklearn import svm
 from sklearn.metrics import accuracy_score, confusion_matrix
-from tensorflow.keras.optimizers.schedules import PolynomialDecay
 from xgboost import XGBClassifier
 
 warnings.filterwarnings("ignore")
@@ -74,7 +74,6 @@ def evaluate(models_meta, test_data, target_models = ["svm", "xgboost", "bert"])
             BATCH_SIZE, EPOCHS = 32, 10
             num_train_steps = len(test_data_feature)*EPOCHS
             saved_model.compile(optimizer=opt, loss=loss, metrics=[acc, tf.keras.metrics.Precision(), tf.keras.metrics.Recall()])
-            pass
 
         else:
             print("Model does not exist. Available models are 'svm', 'xgboost' and 'bert'.")
@@ -103,6 +102,11 @@ def evaluate(models_meta, test_data, target_models = ["svm", "xgboost", "bert"])
 
     return result_dict
 
+'''
+This function is to make predictions on the test data with the models specified in the parameter 'target_models'. It will the output
+a dictionary which contains every model and its respective results and metrics. The output can then be used to compare the performance
+of these models.
+'''
 def evaluate_with_models(x_test, y_test, target_models):
     result_dict = {}
     for model_name, model in target_models:
@@ -110,8 +114,12 @@ def evaluate_with_models(x_test, y_test, target_models):
         if model_name != "bert":
             predicted_y = model.predict(x_test)
             predicted_prob_y = model.predict_proba(x_test)
-            model_result_dict["prediction"] = predicted_y
-            model_result_dict["prediction_prob"] = predicted_prob_y
+        else:
+            predicted_prob_y = tf.nn.softmax(model.predict(x_test))
+            predicted_y = tf.math.argmax(predicted_prob_y, axis=1)
+
+        model_result_dict["prediction"] = predicted_y
+        model_result_dict["prediction_prob"] = predicted_prob_y
 
         metric_dict = {}
         cm_2d = confusion_matrix(y_test, predicted_y)
