@@ -97,6 +97,14 @@ def label_to_integer(sentiment_label):
     else:
         return None
     
+def integer_to_label(sentiment_int):
+    if sentiment_int == 1:
+        return 'positive'
+    elif sentiment_int == 0:
+        return 'negative'
+    else:
+        return None
+    
 def preprocess(dataset, text_col_name = 'Text', label_col_name = None):
     # process the text column
     df = dataset.copy()
