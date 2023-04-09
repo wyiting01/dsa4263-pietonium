@@ -19,8 +19,8 @@ def xgb_instantiate_tfidf_vectorizer(x_train):
 # train_vectors = vectorizer.fit_transform(x_train)
 # test_vectors = vectorizer.transform(x_test)
 
-def xgb_instantiate_xgb_model(x_train, y_train):
-    xgb_model = XGBClassifier(random_state = 1)
+def xgb_instantiate_xgb_model(x_train, y_train, set_random_state = 1):
+    xgb_model = XGBClassifier(random_state = set_random_state)
     xgb_model.fit(x_train, y_train)
     return xgb_model
 
