@@ -7,6 +7,11 @@ from preprocess_fn import noise_entity_removal, mylemmatize, text_normalization,
 from evaluate import evaluate
 from comparison import get_best_model
 from sklearn.metrics import classification_report
+import gensim
+from gensim import corpora
+from kl_topic_classification import preprocess as lda_preprocess
+from kl_topic_classification import split_sentence, make_bigrams, make_trigrams, save_result, create_vectors
+from sklearn.preprocessing import StandardScaler
 import os
 import pickle
 
@@ -33,7 +38,15 @@ models_meta["bert"] = {
     "saved_model": None
     }
 models_meta["topic"] = {
-    "saved_model": "logistic_regression_topic_classification.pkl"
+    "dictionary": "saved_models/kl_lda_tfidf_model.pkl.id2word",
+    "saved_tfidf": "saved_models/kl_lda_tfidf_model.pkl",
+    "saved_model": "saved_models/logistic_regression_topic_classification.pkl"
+}
+
+topics_dict = {
+    0:'cooking',
+    1:'teatime',
+    2:'pets'
 }
 
 # loading vectorizer and saved_model for sentiment predictions
@@ -43,6 +56,9 @@ saved_model = pickle.load(open(models_meta["xgboost"]["saved_model"], "rb"))
 # loading vectorizer and saved_model for topic predictions
 # topic_vectorizer = pickle.load(open(models_meta["topic"]["saved_tfidf"], "rb"))
 # topic_saved_model = pickle.load(open(models_meta["topic"]["saved_model"], "rb"))
+lda_tfidf_model = gensim.models.LdaMulticore.load(models_meta['topic']["saved_tfidf"])
+lda_dictionary = corpora.Dictionary.load(models_meta['topic']["dictionary"])
+lda_lr_model = pickle.load(open(models_meta["topic"]["saved_model"], "rb"))
 
 @app.route('/')
 def hello():
@@ -191,14 +207,39 @@ def make_predictions():
     # return jsonify(f'{predicted_y}')
     return 'Predictions are updated to your file. Check it out!'
 
+'''
+This function returns the predicted topic from our topic classification model when user inputs one review.
+
+The following code is an example of how to obtain the predicted topic from our topic classification model:
+topic_test = "this caffeinated drink is good!"
+topic_url = 'http://127.0.0.1:5000/get_topic'
+params = {'text': topic_test}
+topics_response = requests.get(topic_url, params=params)
+topics_response.text
+'''
 @app.route('/get_topic', methods=['GET']) # havent try yet
 def get_topic():
     text = request.args.get('text')
     processed_text = text_normalization(noise_entity_removal(text))
-    test_x = topic_vectorizer.transform([processed_text])
-    predicted_y = topic_saved_model.predict(test_x)[0]
-    return f'Predicted Topic: {predicted_y}'
+    x_test_corpus = lda_preprocess([processed_text], lda_dictionary)
+    test_vecs = create_vectors(x_test_corpus, [processed_text], lda_tfidf_model, 3, 'test')
+    x_test = np.array(test_vecs)
+    scaler = StandardScaler()
+    x_test_scale = scaler.fit_transform(x_test)
+    x_test_prediction = lda_lr_model.predict(x_test_scale)[0]
+    x_test_prediction_topic = topics_dict[x_test_prediction]
+    return f'Predicted Topic: {x_test_prediction_topic}'
 
+'''
+This function takes in a filename as an input, which will be uploaded by the users, and output the predicted topics for every reviews
+present in the file. Users can specify the filename via the 'filename' parameter. Users can also further specify their text columns via
+the 'text_col_name' parameter, apart from the default 'processed_text'.
+
+The following code is an example of how users can obtain the topics predicted from our topic classification model:
+topics_url = 'http://127.0.0.1:5000/get_topics'
+topics_response = requests.get(topics_url)
+topics_response.text
+'''
 @app.route('/get_topics', methods=['GET']) # havent try yet
 def get_topics():
     filename = "data/processed_uploaded_reviews.csv"
@@ -218,8 +259,12 @@ def get_topics():
         text_col_name = request.args.get('text_col_name')
 
     data = pd.read_csv(filename)
-    test_data_feature = data[text_col_name].values.tolist()
-    test_x = topic_vectorizer.transform(test_data_feature)
-    predicted_y = topic_saved_model.predict(test_x).tolist()
+    test_data = data[text_col_name].values.tolist()
+    x_test_corpus = lda_preprocess(test_data, lda_dictionary)
+    test_vecs = create_vectors(x_test_corpus, test_data, lda_tfidf_model, 3, 'test')
+    x_test = np.array(test_vecs)
+    scaler = StandardScaler()
+    x_test_scale = scaler.fit_transform(x_test)
+    x_test_prediction = lda_lr_model.predict(x_test_scale)
 
-    return jsonify(f'{predicted_y}')
+    return 'Topics predicted'
