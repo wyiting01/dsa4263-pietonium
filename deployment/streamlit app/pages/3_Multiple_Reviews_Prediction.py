@@ -1,9 +1,14 @@
 import streamlit as st
-from io import StringIO
 import pandas as pd
+import pickle
+import sys
+
+sys.path.append("../")
+from preprocess_fn import noise_entity_removal, mylemmatize, text_normalization, label_to_integer
 
 st.set_page_config(page_title = 'Multiple Reviews Prediction', 
                    layout = "wide")
+
 
 # ----- HEADER SECTION -----
 with st.container():
@@ -12,6 +17,7 @@ with st.container():
 
 # ----- PAGE DIVIDER -----
 st.write("---")
+
 
 # ----- DATA INPUT -----
 # """
@@ -22,44 +28,69 @@ st.write("---")
 # Predict button.
 # """
 
+TEXT_COL, ACTUAL_SENTIMENT_COL = "", ""
+
 st.write("Let's start predicting your reviews!")
 
 # widget to accept uploaded file
 uploaded_file = st.file_uploader("Please upload a CSV file", type = "csv")
 
 if uploaded_file is not None:
-    # To read file as bytes
-    bytes_data = uploaded_file.getvalue()
-    st.write(bytes_data)
-
-    # To convert a string based IO
-    stringio = StringIO(uploaded_file.getvalue().decode("utf-8"))
-    st.write(stringio)
-
-    # Can be used wherever a "file-like" object is accepted
     dataframe = pd.read_csv(uploaded_file)
-    st.write(dataframe)
+    st.write("File successfully uploaded!")
+    st.write(dataframe.head(5))
 
-# parameter to know which column in the file is the reviews
+
+# ----- COLUMN NAMES -----
+
+# Obtain reviews column
 TEXT_COL = st.text_input("What is the column name of your reviews? Please input exactly according to the file.")
+
+if TEXT_COL != "":
+
+    # Test to see if a valid column name was given
+    try:
+        st.write("The first 5 reviews of your file are")
+        st.write(dataframe[TEXT_COL].head(5))
+    except:
+        st.markdown(":red[Error: It seems that an invalid column name was given. Please check your column name again.]")
 
 col1, _ = st.columns(2)
 
 with col1:
     # Option for user to choose if they have an actual sentiment to compare to
     sentiment_comparison = st.selectbox(
-        "Do you have the actual sentiment of the reviews? Please input exactly according to the file.",
+        "Do you have the actual sentiment of the reviews?",
         ["No", "Yes"]
     )
 
-    ACTUAL_SENTIMENT_COL = ""
+# If option is "Yes", obtain sentiment column name
+if sentiment_comparison == "Yes":
+    ACTUAL_SENTIMENT_COL = st.text_input("What is the column name of the actual sentiments? Please input exactly according to the file.")
 
-    # If option is "Yes", ask for column name
-    if sentiment_comparison == "Yes":
-        ACTUAL_SENTIMENT_COL = st.text_input("What is the column name of the actual sentiments?")
+    try:
+        st.write("The first 5 sentiments of your file are")
+        st.write(dataframe[ACTUAL_SENTIMENT_COL].head(5))
+    except:
+        st.markdown(":red[Error: It seems that an invalid column name was given. Please check your column name again.]")
+
+
+# ----- PREDICTION -----
 
 if st.button("Predict Now"):
     st.write("Prediction starting now!")
+
+    # Divider
+    st.write("---")
+
+    # Reviews and labels to be processed
+    
+
+    # Process text and change sentiment to integer
+    st.write("Processing of text occurring...")
+    processed_text = text_normalization(noise_entity_removal(text))
+    processed_actual_sentiment = actual_sentiment
+    processed_actual_sentiment = label_to_integer(processed_actual_sentiment.lower())
 
 
 # ----- HIDING WATERMARK -----
