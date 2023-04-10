@@ -133,16 +133,20 @@ if __name__ == '__main__':
     
     # Baseline XGBoost 
     xgbc_base = XGBClassifier(learning_rate = 0.01,n_estimators= 600 , seed = 27)
+    # Fit train data
     xgbc_tfidf_base = xgbc_base.fit(x_train_scale, y_train)
+    # Predict new topic based on test result
     xgbc_y_predict_base = xgbc_tfidf_base.predict(x_test_scale)
     save_result('./result/base_xgbc_result.csv', y_test, xgbc_y_predict_base)
     # Accuracy: 0.977043159
 
     # Final XGBoost
     xgbc = XGBClassifier(learning_rate = 0.1,n_estimators= 1000 , seed = 27) 
+    # Fit train data
     xgbc_tfidf_final = xgbc.fit(x_train_scale, y_train)
     # save model
     pickle.dump(xgbc_tfidf_final, open('../model/svm_topic_classification.pkl', 'wb'))
+    # Predict new topic based on test result
     xgbc_y_predict = xgbc_tfidf_final.predict(x_test_scale)
     save_result('./result/final_xgbc_result.csv', y_test, xgbc_y_predict)
     # Accuracy: 0.980716253
