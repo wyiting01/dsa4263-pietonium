@@ -62,7 +62,7 @@ def save_result(path, y_test_algo, y_predicted_algo):
     # convert classification report to dataframe 
     classfication_df = pd.DataFrame(report).transpose()
     # generate confusion matrix 
-    cm = confusion_matrix(y_test,  y_predicted_algo)
+    cm = confusion_matrix(y_test_algo,  y_predicted_algo)
     # convert from matrix to dataframe
     confusion_matrix_df = pd.DataFrame(cm)
     # save both confusion matrix and classification report into one csv file
@@ -127,7 +127,7 @@ if __name__ == '__main__':
     scaler = StandardScaler()
     x_train_scale = scaler.fit_transform(x_train)
     x_test_scale = scaler.fit_transform(x_test)
-
+    
     # create directory to keep results
     os.makedirs('result/', exist_ok=True)
     
@@ -135,6 +135,8 @@ if __name__ == '__main__':
     xgbc_base = XGBClassifier(learning_rate = 0.01,n_estimators= 600 , seed = 27)
     # Fit train data
     xgbc_tfidf_base = xgbc_base.fit(x_train_scale, y_train)
+     # save base model
+    pickle.dump(xgbc_tfidf_base, open('../model/xgb_topic_classification_base.pkl', 'wb'))
     # Predict new topic based on test result
     xgbc_y_predict_base = xgbc_tfidf_base.predict(x_test_scale)
     save_result('./result/base_xgbc_result.csv', y_test, xgbc_y_predict_base)
@@ -144,8 +146,8 @@ if __name__ == '__main__':
     xgbc = XGBClassifier(learning_rate = 0.1,n_estimators= 1000 , seed = 27) 
     # Fit train data
     xgbc_tfidf_final = xgbc.fit(x_train_scale, y_train)
-    # save model
-    pickle.dump(xgbc_tfidf_final, open('../model/svm_topic_classification.pkl', 'wb'))
+    # save final model
+    pickle.dump(xgbc_tfidf_final, open('../model/xgb_topic_classification_final.pkl', 'wb'))
     # Predict new topic based on test result
     xgbc_y_predict = xgbc_tfidf_final.predict(x_test_scale)
     save_result('./result/final_xgbc_result.csv', y_test, xgbc_y_predict)
