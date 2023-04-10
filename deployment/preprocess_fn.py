@@ -4,6 +4,7 @@ from nltk.corpus import stopwords
 from nltk.stem import PorterStemmer, WordNetLemmatizer
 import re
 import ssl
+from sklearn.model_selection import train_test_split
 
 # Prevent error during nltk.download('stopwords')
 try:
@@ -95,3 +96,27 @@ def label_to_integer(sentiment_label):
         return 0
     else:
         return None
+    
+def integer_to_label(sentiment_int):
+    if sentiment_int == 1:
+        return 'positive'
+    elif sentiment_int == 0:
+        return 'negative'
+    else:
+        return None
+    
+def preprocess(dataset, text_col_name = 'Text', label_col_name = None):
+    # process the text column
+    df = dataset.copy()
+    df['processed_text'] = df[text_col_name].apply(lambda x:noise_entity_removal(x))
+    df['processed_text'] = df['processed_text'].apply(lambda x:text_normalization(x))
+
+    # process the label column if present and if its not in int64 type
+    if label_col_name and label_col_name in df.columns:
+        if df[label_col_name].dtypes != 'int64':
+            df[label_col_name] = df[label_col_name].apply(lambda x:label_to_integer(x))
+        
+    return df
+
+def split_train_test(features, labels):
+    return train_test_split(features, labels, test_size = 0.2, random_state=4211)

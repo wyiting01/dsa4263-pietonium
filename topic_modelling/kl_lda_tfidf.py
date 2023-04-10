@@ -133,26 +133,6 @@ def format_topics_sentences(chosen_model, corpus, texts):
     df_dominant_topic.columns = ['Document_No', 'Dominant_Topic', 'Topic_Perc_Contrib', 'Keywords', 'Text']
     return(sent_topics_df, df_dominant_topic)
 
-# Find the most representative review for each topic
-# purpose: topic keyword might not give much sense of what the topic is. Hence, find some reviews and infer the topic 
-def most_representative_doc_per_topic(dorminant_topic_each_sent):
-    # Group top 5 sentences under each topic
-    sent_topics_sorteddf = pd.DataFrame()
-
-    sent_topics_outdf_grpd = dorminant_topic_each_sent.groupby('Dominant_Topic')
-
-    for i, grp in sent_topics_outdf_grpd:
-        sent_topics_sorteddf = pd.concat([sent_topics_sorteddf, 
-                                            grp.sort_values(['Perc_Contribution'], ascending=[0]).head(1)], 
-                                            axis=0)
-
-    # Reset Index    
-    sent_topics_sorteddf.reset_index(drop=True, inplace=True)
-
-    # Format
-    sent_topics_sorteddf.columns = ['Topic_Num', "Topic_Perc_Contrib", "Keywords", "Text"]
-    return(sent_topics_sorteddf)
-
 # Topic distribution across reviews
 def topic_distri_across_doc(dorminant_topic_each_sent):
     # Number of Documents for Each Topic
@@ -171,8 +151,33 @@ def topic_distri_across_doc(dorminant_topic_each_sent):
     df_dominant_topics.columns = ['Dominant_Topic', 'Topic_Keywords', 'Num_Documents', 'Perc_Documents']
 
     return(df_dominant_topics)
+   
+# to find the unique sets for each topic
+def unique_keyword_per_topic(lda_model):
+    # convert the print_topics result to dictionary format
+    for idx, topic in lda_model.print_topics(num_words=10):    
+        print('Topic: {} \nWords: {}'.format(idx, topic))
+    my_dict = {'Topic_' + str(i): [token for token, score in lda_model.show_topic(i, topn=10)] for i in range(0, lda_model.num_topics)}
+    topics_keywords = []
+    for key,value in my_dict.items():
+        topics_keywords.append(set(value))
+    # find the intersection between the 3 topics
+    result = topics_keywords[0].intersection(topics_keywords[1],topics_keywords[2])
+    final_unique_set = []
+    for i in range(len(topics_keywords)):
+        for j in range(len(topics_keywords)):
+            if j != i:
+                for k in range(len(topics_keywords)):
+                    if k not in [j,i]:
+                        set_unique = (topics_keywords[i]^result^topics_keywords[j]^topics_keywords[k])&topics_keywords[i]
+                        if set_unique not in final_unique_set:
+                            final_unique_set.append(set_unique)
+                        break
+                break
+    return (final_unique_set)
 
 if __name__ == '__main__':
+    
     # read in post processed data
     processed_data = pd.read_csv('../data/curated/reviews/yiting_cleaned_reviews.csv')
 
@@ -240,7 +245,7 @@ if __name__ == '__main__':
         LDAvis_prepared = pickle.load(f)
     pyLDAvis.save_html(LDAvis_prepared, 'result/kl_ldavis_tfidf_'+str(final_num_topics)+'.html')
     LDAvis_prepared
-
+    
     # load model
     lda_tfidf_model = gensim.models.LdaMulticore.load('../model/kl_lda_tfidf_model.pkl')
     
@@ -249,35 +254,20 @@ if __name__ == '__main__':
     df_topic_per_key.to_csv('./result/dominant_topic_in_each_sentence.csv')
     # Dominant topics: Topic 1 - 3425 reviews, Topic 2 - 1751 reviews, Topic 0 - 268 reviews
 
-    # Find the most representative review for each topic
-    contribution_per_topic = most_representative_doc_per_topic(df_topic_sents_keywords)
-    contribution_per_topic.to_csv('./result/most_representative_document_for_each_topic.csv')
-
     # Topic distribution across documents
     df_dominant_topic = topic_distri_across_doc(df_topic_sents_keywords)
     df_dominant_topic.head(final_num_topics).to_csv('./result/topic_distribution_across_documents.csv')
 
-    # convert the print_topics result to dictionary format
-    for idx, topic in lda_tfidf_model.print_topics(num_words=10):    
-        print('Topic: {} \nWords: {}'.format(idx, topic))
-    my_dict = {'Topic_' + str(i): [token for token, score in lda_tfidf_model.show_topic(i, topn=10)] for i in range(0, lda_tfidf_model.num_topics)}
-    a = []
-    for key,value in my_dict.items():
-        a.append(set(value))
+    unique_sets = unique_keyword_per_topic(lda_tfidf_model)
+    for i in range (len(unique_sets)):
+        print('Topic {}: {}'.format(i, unique_sets[i]))
 
-    # find the intersection between the 3 topics
-    result = a[0].intersection(a[1],a[2])
-
-    # Print the unique sets for each topic
-    print((a[0]^result^a[1]^a[2])&a[0])
-    print((a[1]^result^a[0]^a[2])&a[1])
-    print((a[2]^result^a[1]^a[0])&a[2])
     """
     Topic 0: {'salt', 'noodles', 'water', 'pasta', 'soup'}
     Topic 1: {'coffee', 'tea'}
     Topic 2: {'dog', 'make', 'love', 'eat', 'food'}
     """
-    
+
 
 
 

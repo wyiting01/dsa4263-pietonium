@@ -1,12 +1,21 @@
+# import necessary libraries
 from flask import Flask, request, jsonify
 from werkzeug.utils import secure_filename
 import numpy as np
 import pandas as pd
-from preprocess_fn import noise_entity_removal, mylemmatize, text_normalization, label_to_integer
-from evaluate import evaluate, evaluate_one
+from preprocess_fn import noise_entity_removal, mylemmatize, text_normalization, label_to_integer, preprocess, integer_to_label
+from evaluate import evaluate
 from comparison import get_best_model
+from sklearn.metrics import classification_report
+import gensim
+from gensim import corpora
+from kl_topic_classification import preprocess as lda_preprocess
+from kl_topic_classification import split_sentence, make_bigrams, make_trigrams, save_result, create_vectors
+from sklearn.preprocessing import StandardScaler
 import os
+import pickle
 
+# Initialisation
 app = Flask(__name__)
 UPLOAD_FILE_PATH = './data/'
 file_list = [i for i in os.listdir("./data")]
@@ -29,14 +38,43 @@ models_meta["bert"] = {
     "saved_model": None
     }
 models_meta["topic"] = {
-    "saved_model": None
+    "dictionary": "saved_models/kl_lda_tfidf_model.pkl.id2word",
+    "saved_tfidf": "saved_models/kl_lda_tfidf_model.pkl",
+    "saved_model": "saved_models/logistic_regression_topic_classification.pkl"
 }
+
+topics_dict = {
+    0:'cooking',
+    1:'teatime',
+    2:'pets'
+}
+
+# loading vectorizer and saved_model for sentiment predictions
+vectorizer = pickle.load(open(models_meta["xgboost"]["saved_tfidf"], "rb"))
+saved_model = pickle.load(open(models_meta["xgboost"]["saved_model"], "rb"))
+
+# loading vectorizer and saved_model for topic predictions
+# topic_vectorizer = pickle.load(open(models_meta["topic"]["saved_tfidf"], "rb"))
+# topic_saved_model = pickle.load(open(models_meta["topic"]["saved_model"], "rb"))
+lda_tfidf_model = gensim.models.LdaMulticore.load(models_meta['topic']["saved_tfidf"])
+lda_dictionary = corpora.Dictionary.load(models_meta['topic']["dictionary"])
+lda_lr_model = pickle.load(open(models_meta["topic"]["saved_model"], "rb"))
 
 @app.route('/')
 def hello():
     return 'Welcome from Group Pietonium!'
 
 '''
+This upload function is for users to upload their csv files. During this process, the uploaded files will be preprocessed, which will
+output an additional column - preprocessed_text containing the output of preprocessing the text column. Respective models will make use
+of this column to perform their predictions.
+
+For preprocessing, by default, the text column to be processed will be 'Text' while the column with the sentiment labels is 'Sentiment'.
+Users can change these by inputting these column names as parameter in request.post(), as seen from the commented line for params1.
+In the event that the uploaded files do not have the actual labels, or the actual labels are in integer format, we will not be 
+converting the columns from strings to integers.
+
+The following codes are an example of how users can upload their files:
 upload_url = 'http://127.0.0.1:5000/upload'
 with open('reviews.csv', 'rb') as f: # use this in case file is too big, better to stream
     files = {'file': ('uploaded_reviews.csv', f)} # filename after upload
@@ -65,9 +103,10 @@ def upload():
             label_col_name = request.args.get('label_col') # name of the label column
 
         df = pd.read_csv(UPLOAD_FILE_PATH + uploaded_filename)
-        df['processed_text'] = df[text_col_name].apply(lambda x:noise_entity_removal(x))
-        df['processed_text'] = df['processed_text'].apply(lambda x:text_normalization(x))
-        df[label_col_name] = df[label_col_name].apply(lambda x:label_to_integer(x))
+        if label_col_name in df.columns:
+            df = preprocess(df, label_col_name = label_col_name)
+        else:
+            df = preprocess(df)
         df.to_csv(UPLOAD_FILE_PATH + "processed_" + uploaded_filename)
         processed_filename = "processed_" + uploaded_filename
         file_list.append(processed_filename)
@@ -76,48 +115,135 @@ def upload():
 
     return "Done"
 
+'''
+This function is to list out the available files uploaded by the users, as well as the preprocessed files.
+The following code is an example of how you can view the available files:
+requests.get('http://127.0.0.1:5000/list_files')
+'''
 @app.route('/list_files', methods=['GET'])
 def list_files():
     print("Available Files:")
     print(file_list)
-    return file_list 
+    return file_list
 
 '''
+This function is for user to input one review and obtain the sentiment prediction from our model. The function will return the 
+sentiment predicted by the model. Users are expected to pass in the review text as an argument in request.get() for the 'text'
+parameter.
+
+The following codes are an example of how users can use our model make sentiment prediction on one review:
+bad_text = "This product was a complete disappointment. Poor quality and unreliable performance. Not recommended."
+good_text = "It so good, I will definitely buy it again!"
 prediction_url = 'http://127.0.0.1:5000/prediction'
-param1 = {'text': 'this is just some random text for testing', 'actual_label':'positive', 'preferred_model': "xgboost svm"}
+param1 = {'text': good_text}
 prediction_response = requests.get(prediction_url, params=param1)
 prediction_response.text
 '''
 @app.route('/prediction', methods=['GET']) # user put in one sentence
 def make_prediction():
-    preferred_models = "xgboost svm bert"
-    text, actual_label = request.args.get('text'), request.args.get('actual_label')
-
-    if request.args.get('preferred_models'):
-        preferred_models = request.args.get('preferred_models')
-
-    if " " in preferred_models:
-        preferred_models_list = preferred_models.split()
-    else:
-        preferred_models_list = [preferred_models]
-
+    text = request.args.get('text')
     processed_text = text_normalization(noise_entity_removal(text))
-    processed_actual_label = label_to_integer(actual_label)
-
-    evaluation_output = evaluate_one(processed_text, processed_actual_label, models_meta, target_models = preferred_models_list)
-    # print(evaluation_output)
-
-    return jsonify(f'{evaluation_output}')
+    # assume final model is xgboost
+    test_x = vectorizer.transform([processed_text])
+    predicted_y = saved_model.predict(test_x)[0]
+    return f'Predicted Sentiment: {predicted_y}'
 
 '''
+This function is to allow users to obtain sentiment predictions using our model with the csv file they have uploaded.
+After the prediction, two additional columns - 'prediction_proba' and 'predictions' will be appended to the uploaded csv file,
+which contain the prediction probabilities and the sentiment predictions output from the model respectively.
+Users are required to specify their filename which they have uploaded, and the function will automatically read the processed
+version of the file.
+
+The following code is an example of how users can obtain sentiment predictions from the model:
 predictions_url = 'http://127.0.0.1:5000/predictions'
-predictions_response = requests.get(predictions_url)
+params2 = {'filename':'uploaded_reviews.csv'}
+# params2 = {'filename':'uploaded_reviews.csv', 'actual_label_col_name':'Sentiment'}
+predictions_response = requests.get(predictions_url, params=params2)
 predictions_response.text
 '''
 @app.route('/predictions', methods=['GET']) # user put in entire data (eg. reviews.csv)
 def make_predictions():
-    preferred_models = "xgboost svm bert"
+    uploaded_filename = "data/uploaded_reviews.csv"
     filename = "data/processed_uploaded_reviews.csv"
+    text_col_name = 'processed_text'
+    
+    if request.args.get('filename'):
+        input_filename = request.args.get('filename')
+        if input_filename in file_list:
+            filename = input_filename
+            uploaded_filename = UPLOAD_FILE_PATH + filename
+            filename = UPLOAD_FILE_PATH + "processed_" + filename
+            print("filename is", filename)
+        else:
+            print("No such file. Please upload you file via /upload")
+            return "No such file"
+        
+    if request.args.get('text_col_name'):
+        text_col_name = request.args.get('text_col_name')
+
+    uploaded_data = pd.read_csv(uploaded_filename)
+    data = pd.read_csv(filename)
+    test_data_feature = data[text_col_name].values.tolist()
+    test_x = vectorizer.transform(test_data_feature)
+    predicted_proba = saved_model.predict_proba(test_x).tolist()
+    predicted_y = saved_model.predict(test_x).tolist()
+
+    # updating the prediction probabilities and actual prediction to the uploaded csv file
+    print('Adding predictions to your file...')
+    uploaded_data['predicted_proba'] = predicted_proba
+    uploaded_data['predicted_Sentiment'] = predicted_y
+    uploaded_data['predicted_Sentiment'] = uploaded_data['predicted_Sentiment'].apply(lambda x:integer_to_label(x))
+    print('Filepath:' + uploaded_filename)
+    uploaded_data.to_csv(uploaded_filename, index = False)
+
+    if request.args.get('actual_label_col_name'):
+        actual_label_col_name = request.args.get('actual_label_col_name')
+        actual_labels = data[actual_label_col_name].values.tolist()
+        cr = classification_report(actual_labels, predicted_y, output_dict=True)
+        accuracy = cr['accuracy']
+        print(f'Accuracy: {round(accuracy, 3)}')
+
+    # return jsonify(f'{predicted_y}')
+    return 'Predictions are updated to your file. Check it out!'
+
+'''
+This function returns the predicted topic from our topic classification model when user inputs one review.
+
+The following code is an example of how to obtain the predicted topic from our topic classification model:
+topic_test = "this caffeinated drink is good!"
+topic_url = 'http://127.0.0.1:5000/get_topic'
+params = {'text': topic_test}
+topics_response = requests.get(topic_url, params=params)
+topics_response.text
+'''
+@app.route('/get_topic', methods=['GET']) # havent try yet
+def get_topic():
+    text = request.args.get('text')
+    processed_text = text_normalization(noise_entity_removal(text))
+    x_test_corpus = lda_preprocess([processed_text], lda_dictionary)
+    test_vecs = create_vectors(x_test_corpus, [processed_text], lda_tfidf_model, 3, 'test')
+    x_test = np.array(test_vecs)
+    scaler = StandardScaler()
+    x_test_scale = scaler.fit_transform(x_test)
+    x_test_prediction = lda_lr_model.predict(x_test_scale)[0]
+    x_test_prediction_topic = topics_dict[x_test_prediction]
+    return f'Predicted Topic: {x_test_prediction_topic}'
+
+'''
+This function takes in a filename as an input, which will be uploaded by the users, and output the predicted topics for every reviews
+present in the file. Users can specify the filename via the 'filename' parameter. Users can also further specify their text columns via
+the 'text_col_name' parameter, apart from the default 'processed_text'.
+
+The following code is an example of how users can obtain the topics predicted from our topic classification model:
+topics_url = 'http://127.0.0.1:5000/get_topics'
+topics_response = requests.get(topics_url)
+topics_response.text
+'''
+@app.route('/get_topics', methods=['GET']) # havent try yet
+def get_topics():
+    filename = "data/processed_uploaded_reviews.csv"
+    text_col_name = 'processed_text'
     
     if request.args.get('filename'):
         input_filename = request.args.get('filename')
@@ -128,29 +254,17 @@ def make_predictions():
         else:
             print("No such file. Please upload you file via /upload")
             return "No such file"
+        
+    if request.args.get('text_col_name'):
+        text_col_name = request.args.get('text_col_name')
 
-    if request.args.get('preferred_models'):
-        preferred_models = request.args.get('preferred_models')
+    data = pd.read_csv(filename)
+    test_data = data[text_col_name].values.tolist()
+    x_test_corpus = lda_preprocess(test_data, lda_dictionary)
+    test_vecs = create_vectors(x_test_corpus, test_data, lda_tfidf_model, 3, 'test')
+    x_test = np.array(test_vecs)
+    scaler = StandardScaler()
+    x_test_scale = scaler.fit_transform(x_test)
+    x_test_prediction = lda_lr_model.predict(x_test_scale)
 
-    if " " in preferred_models:
-        preferred_models_list = preferred_models.split()
-    else:
-        preferred_models_list = [preferred_models]
-
-    print('Evaluation:')    
-    evaluation_output = evaluate(models_meta, filename, preferred_models_list)
-    # print(evaluation_output)
-
-    print('Comparison:')
-    best_model, best_model_results = get_best_model(evaluation_output)
-    # print(best_model_results)
-
-    return jsonify(f'{best_model} {best_model_results}')
-
-@app.route('/get_topic', methods=['GET'])
-def get_topic():
-    pass
-
-@app.route('/get_topics', methods=['GET'])
-def get_topics():
-    pass
+    return 'Topics predicted'
