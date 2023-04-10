@@ -135,10 +135,10 @@ def format_topics_sentences(chosen_model, corpus, texts):
 
 # Topic distribution across reviews
 def topic_distri_across_doc(dorminant_topic_each_sent):
-    # Number of Documents for Each Topic
+    # Number of Reviews for Each Topic
     topic_counts = dorminant_topic_each_sent['Dominant_Topic'].value_counts()
 
-    # Percentage of Documents for Each Topic
+    # Percentage of Reviews for Each Topic
     topic_contribution = round(topic_counts/topic_counts.sum(), 4)
 
     # Topic Number and Keywords
@@ -200,12 +200,14 @@ if __name__ == '__main__':
                                                  id2word=id2word, 
                                                  passes=2,
                                                  workers=4)
+    # save Baseline model
+    lda_model_tfidf.save('../model/kl_lda_tfidf_model_baseline.pkl')
 
     # baseline model coherence
     coherence_model_lda = CoherenceModel(model=lda_model_tfidf, texts = data_words, dictionary=id2word, coherence='c_v')
     coherence_lda = coherence_model_lda.get_coherence()
     print('Baseline Coherence Score: ', coherence_lda)
-    # Baseline Coherence Score: 0.31473331
+    # Baseline Coherence Score:  0.3644354360237052
 
     # create directory to keep results
     os.makedirs('result/', exist_ok=True)
@@ -228,7 +230,7 @@ if __name__ == '__main__':
     # Print the Keyword for each topic
     for idx, topic in final_lda_model_tfidf.print_topics(num_words=10):    
         print('Topic: {} \nWords: {}'.format(idx, topic))
-
+    
     # save model
     final_lda_model_tfidf.save('../model/kl_lda_tfidf_model.pkl')
 
@@ -248,7 +250,7 @@ if __name__ == '__main__':
     
     # load model
     lda_tfidf_model = gensim.models.LdaMulticore.load('../model/kl_lda_tfidf_model.pkl')
-    
+   
     # Find the dominant topic for each review
     df_topic_sents_keywords, df_topic_per_key = format_topics_sentences(lda_tfidf_model, corpus_tfidf, data)
     df_topic_per_key.to_csv('./result/dominant_topic_in_each_sentence.csv')
@@ -261,12 +263,14 @@ if __name__ == '__main__':
     unique_sets = unique_keyword_per_topic(lda_tfidf_model)
     for i in range (len(unique_sets)):
         print('Topic {}: {}'.format(i, unique_sets[i]))
-
+     
     """
     Topic 0: {'salt', 'noodles', 'water', 'pasta', 'soup'}
     Topic 1: {'coffee', 'tea'}
     Topic 2: {'dog', 'make', 'love', 'eat', 'food'}
     """
+
+    
 
 
 
