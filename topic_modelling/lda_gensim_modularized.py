@@ -3,11 +3,12 @@ import gensim
 import gensim.corpora as corpora 
 from gensim import models
 import pyLDAvis.gensim
-import pickle 
 import pyLDAvis
 import os
 from pathlib import Path
 from gensim.models import CoherenceModel
+from nltk import FreqDist
+import matplotlib.pyplot as plt
 
 def read_data(path):
     """
@@ -25,15 +26,44 @@ def split_sentence(text):
         lst.append(sentence.split())
     return lst
 
+def get_top_10_words(data_inv):
+    """
+    Get the top 10 highest count words across all reviews
+    """
+    lst = []
+    for i in range(len(data_inv)):
+        for k in data_inv[i]:
+            lst.append(k)
+    fdist = FreqDist(lst) # a frequency distribution of words (word count over the corpus)
+    top_k_words, _ = zip(*fdist.most_common(10)) # unzip the words and word count tuples
+    return(list(top_k_words)) 
+
+def remove_top_10_words(data_inv, top_10_lst):
+    """
+    Remove the top 10 highest count words from all reviews
+    """
+    lst = []
+    for i in range(len(data_inv)):
+        sentence = []
+        for k in data_inv[i]:
+            if k not in top_10_lst:
+                sentence.append(k)
+        lst.append(sentence)
+    return lst
+
 def preprocess_words(data_inv):
     """
     1. Split sentences to individual words
+    2. Removed top 10 highest frequency count words
     2. Build bigram and trigram models
     3. Form bigram and trigram
     4. Create dictionary
     5. Create corpus
     """
     data_words = split_sentence(data_inv)
+    
+    remove_lst = get_top_10_words(data_words)
+    data_words = remove_top_10_words(data_words,remove_lst)
 
     bigram_phrases = gensim.models.Phrases(data_words, min_count=5, threshold=100) # higher threshold fewer phrases.
     trigram_phrases = gensim.models.Phrases(bigram_phrases[data_words], threshold=100)  
@@ -63,16 +93,21 @@ def make_trigrams(texts, bigram_text, trigram_text,):
     trigram_mod = gensim.models.phrases.Phraser(trigram_text)
     return [trigram_mod[bigram_mod[doc]] for doc in texts]
 
-def obtain_corpus(input_data):
+def combine_reviews_to_list(input_data):
     """
-    Combine all processed text into a list and
-    obtain preprocessed text, dictionary and bag of words corpus
+    Combine all processed text into a list
     """
     data = input_data.processed_text.values.tolist()
+    return data
+
+def obtain_corpus(data):
+    """
+    Obtain preprocessed text, dictionary and bag of words corpus
+    """
     data_words, id2word, bow_corpus = preprocess_words(data)
     return (data_words, id2word, bow_corpus)
 
-def create_tfidf_model(corpus):
+def get_tfidf_corpus(corpus):
     """
     Create tfidf corpus from bag of words corpus
     """
@@ -80,12 +115,17 @@ def create_tfidf_model(corpus):
     corpus_tfidf = tfidf[corpus]
     return corpus_tfidf
 
-def load_base_lda_model(data_words, id2word):
+def load_base_lda_model(data_words, id2word, corpus_tfidf):
     """
-    1. Load and return Base model 
+    1. Run and return Base model 
     2. Print Baseline coherence score
     """
-    lda_tfidf_model_baseline = gensim.models.LdaMulticore.load('../model/kl_lda_tfidf_model_baseline.pkl')
+    lda_tfidf_model_baseline = gensim.models.LdaMulticore(corpus=corpus_tfidf, 
+                                                 num_topics=2, 
+                                                 id2word=id2word, 
+                                                 random_state=100,
+                                                 passes=10,
+                                                 workers=4)
     coherence_model_lda = CoherenceModel(model=lda_tfidf_model_baseline, 
                                         texts = data_words, 
                                         dictionary=id2word,
@@ -94,61 +134,77 @@ def load_base_lda_model(data_words, id2word):
     print('Baseline Coherence Score: ', coherence_lda)
     return lda_tfidf_model_baseline
 
-def load_final_lda_model(data_words, id2word):
+def get_coherence_values_and_optimal_topic_num(type_corpus, n, id2word, data_words):
     """
-    1. Load and return Final model 
-    2. Print Final coherence score
+    1. Compute coherence values of different n --- n is the number of topics
+    2. Obtain optimal number of topics
+    3. Show plot of coherence values against n
+    """
+    topics = []
+    score = []
+    flag = True
+    optimal_topic_index = 0
+    optimal_topic_no = 0
+
+    # optimal number of topics start from 2 
+    # one topic is "ignored"
+    for i in range(2, n):
+        lda_model = gensim.models.LdaMulticore(corpus=type_corpus,
+                                               id2word=id2word,
+                                                num_topics=i, 
+                                                random_state=100,
+                                                chunksize=100,
+                                                passes=10)
+        # instantiate topic coherence model
+        cm = CoherenceModel(model=lda_model, texts= data_words, dictionary=id2word, coherence='c_v')
+        # Append number of topics modeled
+        topics.append(i)
+        # Append coherence scores to list
+        score.append(cm.get_coherence()) 
+        # check for highest cm before flattening
+        if i != 2 and flag == True:
+            if cm.get_coherence() < score[i-3]:
+                optimal_topic_no = i - 1
+                optimal_topic_index = i - 3
+                flag = False
+
+    # print the coherence score of topic number from 2 to k
+    for m, cv in zip(topics, score):  
+        print("Num Topics =", m, " has Coherence Value of", round(cv, 4))
+    
+    # save the coherence score and topic number as dataframe
+    output = {'k': topics, 'coherent score': score}
+    df_output = pd.DataFrame(output)
+    
+    # plot the graph of the coherence score and topic number 
+    plt.plot(df_output['k'], df_output['coherent score'])
+    plt.xlabel("Num Topics")
+    plt.ylabel("Coherence score")
+    plt.legend(("coherence_values"), loc='best')
+    plt.title("Coherence score with respective number of topics")
+    plt.show()
+    return [optimal_topic_no, score[optimal_topic_index], df_output]
+
+def load_final_lda_model(id2word, corpus_tfidf, optimal_topic_no):
+    """
+    Run and return Final LDA model 
     """    
-    lda_tfidf_model = gensim.models.LdaMulticore.load('../model/kl_lda_tfidf_model.pkl')
-    coherence_model_lda = CoherenceModel(model=lda_tfidf_model, 
-                                        texts = data_words, 
-                                        dictionary=id2word,
-                                        coherence='c_v')
-    print('Final Coherence Score:', coherence_model_lda)
-    print('Final number of topics used:', number_of_topics(lda_tfidf_model))
+    # final model with parameters yielding highest coherence score
+    lda_tfidf_model = gensim.models.LdaMulticore(corpus=corpus_tfidf,
+                                        id2word=id2word,
+                                        num_topics=optimal_topic_no,
+                                        random_state=100,
+                                        passes=10,
+                                        workers=4)
     return lda_tfidf_model
 
-def print_keywords_per_topic(lda_model, k):
+def dominant_topic_per_review(chosen_model, corpus, texts):
     """
-    Print k keywords for each topic 
+    Find the dominant topic per review
     """
-    for idx, topic in lda_model.print_topics(num_words=k):
-        print('Topic: {} \nWords: {}'.format(idx, topic))
-
-def number_of_topics(lda_model):
-    """
-    Return the optimal number of topics of a model
-    """
-    num = 0
-    for idx, topic in lda_model.print_topics(num_words=10):
-        num += 1
-    return num
-
-def visualize_topics(lda_model, corpus_tfidf, id2word):
-    """
-    Save the LDAvis file and load it to open the html of LDAvis
-    """
-    final_num_topics = number_of_topics(lda_model)
-    LDAvis_data_filepath = os.path.join('../model/kl_ldavis_tfidf_'+str(final_num_topics)+'.pkl')
-    filePath = Path(LDAvis_data_filepath)
-    filePath.touch(exist_ok= True)
-    if 1 == 1:
-        LDAvis_prepared = pyLDAvis.gensim.prepare(lda_model, corpus_tfidf, id2word)
-        with open(LDAvis_data_filepath, 'wb') as f:
-            pickle.dump(LDAvis_prepared, f)
-    with open(LDAvis_data_filepath, 'rb') as f:
-        LDAvis_prepared = pickle.load(f)
-    pyLDAvis.save_html(LDAvis_prepared, 'result/kl_ldavis_tfidf_'+str(final_num_topics)+'.html')
-    LDAvis_prepared
-
-# Finding the dominant topic for each review
-def format_topics_sentences(chosen_model, corpus, texts):
-    # Init output
     sent_topics_df = pd.DataFrame()
-    # Get main topic in each review
     for i, row in enumerate(chosen_model[corpus]):
         row = sorted(row, key=lambda x: (x[1]), reverse=True)
-        # Get the Dominant topic, Perc Contribution and Keywords for each document
         for j, (topic_num, prop_topic) in enumerate(row):
             if j == 0:  # => dominant topic
                 wp = chosen_model.show_topic(topic_num)
@@ -163,35 +219,20 @@ def format_topics_sentences(chosen_model, corpus, texts):
     df_dominant_topic.columns = ['Document_No', 'Dominant_Topic', 'Topic_Perc_Contrib', 'Keywords', 'Text']
     return(sent_topics_df, df_dominant_topic)
 
-def dominant_topic_per_review(lda_model, corpus_tfidf, data):
+def save_dominant_topic_per_review(lda_model, corpus_tfidf, data):
     """
     Find the dominant topic for each review and
     save it to csv for later use in topic classification
     """
-    df_topic_sents_keywords, df_topic_per_key = format_topics_sentences(lda_model, corpus_tfidf, data)
-    df_topic_per_key.to_csv('./result/dominant_topic_in_each_sentence.csv')
-    return df_topic_sents_keywords
+    df_topic_sents_keywords, df_topic_per_key = dominant_topic_per_review(lda_model, corpus_tfidf, data)
+    return (df_topic_sents_keywords, df_topic_per_key)
 
-def topic_distri_across_doc(dorminant_topic_each_sent):
+def topic_distri_across_review(df):
     """
-    Count the number of reviews in each topic 
+    Number of Reviews in Each Topic
     """
-    # Number of reviews for Each Topic
-    topic_counts = dorminant_topic_each_sent['Dominant_Topic'].value_counts()
-
-    # Percentage of reviews for Each Topic
-    topic_contribution = round(topic_counts/topic_counts.sum(), 4)
-
-    # Topic Number and Keywords
-    topic_num_keywords = dorminant_topic_each_sent[['Dominant_Topic', 'Topic_Keywords']]
-
-    # Concatenate Column wise
-    df_dominant_topics = pd.concat([topic_num_keywords, topic_counts, topic_contribution], axis=1)
-
-    # Change Column names
-    df_dominant_topics.columns = ['Dominant_Topic', 'Topic_Keywords', 'Num_Documents', 'Perc_Documents']
-
-    return(df_dominant_topics)
+    topic_counts = df['Dominant_Topic'].value_counts()
+    return topic_counts
 
 def unique_keyword_per_topic(lda_model):
     """
