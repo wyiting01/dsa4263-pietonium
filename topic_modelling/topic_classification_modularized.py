@@ -1,5 +1,5 @@
 import gensim
-from gensim import models
+from gensim import corpora, models
 from gensim.corpora.dictionary import Dictionary
 import pandas as pd
 from sklearn.model_selection import train_test_split
@@ -11,6 +11,28 @@ from xgboost import XGBClassifier
 from nltk import FreqDist
 from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import StratifiedKFold
+
+def load_lda_model():
+    """
+    load lda_tfidf model 
+    """
+    lda_tfidf_model = gensim.models.LdaMulticore.load('../model/lda_gensim/lda_tfidf_model_FINAL.pkl')
+    
+    return lda_tfidf_model
+
+def load_id2word():
+    """
+    load lda_tfidf dictionary
+    """
+    dictionary = corpora.Dictionary.load('../model/lda_gensim/lda_tfidf_model_FINAL.pkl.id2word')
+    return dictionary
+
+def load_labelled_csv():
+    """
+    Read in review that has labelled topic which was done by LDA
+    """
+    processed_data = pd.read_csv('./result/dominant_topic_in_each_sentence.csv')
+    return processed_data
 
 def split_test_train(processed_data):
     """
