@@ -59,10 +59,11 @@ if text != "":
         st.write("---")
 
         # Process text and change sentiment to integer
-        st.write("Processing of text occurring...")
+        st.write("Processing of review occurring...")
         processed_text = text_normalization(noise_entity_removal(text))
         processed_actual_sentiment = actual_sentiment
         processed_actual_sentiment = label_to_integer(processed_actual_sentiment.lower())
+        st.write("Review successfully processed!")
 
         # SVM tfidf and model 
         models_meta = {
@@ -76,6 +77,7 @@ if text != "":
         saved_model = pickle.load(open(models_meta["saved_model"], "rb")) # load saved model
 
         # Predict the sentiment
+        st.write("Prediction in progress...")
         predicted_sentiment = saved_model.predict(test_x)
         st.write("Prediction done!")
 
