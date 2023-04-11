@@ -1,21 +1,45 @@
 import gensim
-from gensim import corpora, models
+from gensim import models
 from gensim.corpora.dictionary import Dictionary
 import pandas as pd
 from sklearn.model_selection import train_test_split
-import numpy as np
-import pickle 
+import numpy as np 
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import classification_report, confusion_matrix
+import os
+from xgboost import XGBClassifier
+from nltk import FreqDist
+from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import StratifiedKFold
 
-def read_split_data(path):
+def split_test_train(processed_data):
     """
     Read labelled data obtained from previous LDA topic modelling
     and split train and test in ratio 0.2
     """
-    processed_data = pd.read_csv(path)
     train , test = train_test_split(processed_data, test_size = 0.2, random_state = 42)
     return (train, test)
+
+# get the top 10 highest count words across all reviews
+def get_top_10_words(data_inv):
+    lst = []
+    for i in range(len(data_inv)):
+        for k in data_inv[i]:
+            lst.append(k)
+    fdist = FreqDist(lst) # a frequency distribution of words (word count over the corpus)
+    top_k_words, _ = zip(*fdist.most_common(10)) # unzip the words and word count tuples
+    return(list(top_k_words)) 
+
+# remove the top 10 highest count words from all reviews
+def remove_top_10_words(data_inv, top_10_lst):
+    lst = []
+    for i in range(len(data_inv)):
+        sentence = []
+        for k in data_inv[i]:
+            if k not in top_10_lst:
+                sentence.append(k)
+        lst.append(sentence)
+    return lst
 
 def y_label(train,test):
     """
@@ -34,10 +58,11 @@ def split_sentence(text):
         lst.append(sentence.split())
     return lst
 
-def preprocess(data_inv, id2words):
+def preprocess_test_train(data_inv, id2words):
     """
     1. Combine all reviews into list
     2. Split sentences to individual words
+    3. Removed top 10 highest frequency count words
     3. Build bigram and trigram models
     4. Form bigram and trigram
     5. Create corpus
@@ -45,6 +70,8 @@ def preprocess(data_inv, id2words):
     data_invs = data_inv.Text.values.tolist()
 
     data_words = split_sentence(data_invs)
+    remove_lst = get_top_10_words(data_words)
+    data_words = remove_top_10_words(data_words,remove_lst)
 
     bigram_phrases = gensim.models.Phrases(data_words, min_count=5, threshold=100) # higher threshold fewer phrases.
     trigram_phrases = gensim.models.Phrases(bigram_phrases[data_words], threshold=100)  
@@ -70,20 +97,6 @@ def make_trigrams(texts, bigram_text, trigram_text,):
     bigram_mod = gensim.models.phrases.Phraser(bigram_text)
     trigram_mod = gensim.models.phrases.Phraser(trigram_text)
     return [trigram_mod[bigram_mod[doc]] for doc in texts]    
-
-def load_lda_model():
-    """
-    Load LDA-tfidf model from topic modelling
-    """
-    lda_tfidf_model = gensim.models.LdaMulticore.load('../model/kl_lda_tfidf_model.pkl')
-    return lda_tfidf_model
-
-def load_model_dictionary():
-    """
-    Load LDA-tfidf dictionary from topic modelling
-    """    
-    dictionary = corpora.Dictionary.load('../model/kl_lda_tfidf_model.pkl.id2word')
-    return dictionary
 
 def create_vectors(corpuss, data, lda_model, k):
     """
@@ -115,24 +128,39 @@ def convert_vector_to_scaled_array(train_vecs, y_train, test_vecs, y_test):
 
     return (x_train_scale, y_train, x_test_scale, y_test)
 
-   
-def final_xgb():
+def baseline_xgb(x_train_scale, y_train):
     """
-    Load final xgb model
+    Run Baseline xgb model
     """
-    xgb_model_loaded = pickle.load(open('../model/xgb_topic_classification_final.pkl', "rb"))
-    return xgb_model_loaded
+    xgbc_base = XGBClassifier(n_estimators= 100 , seed = 27)
+    # Fit train data
+    xgbc_tfidf_base = xgbc_base.fit(x_train_scale, y_train)
+    return xgbc_tfidf_base
 
-def baseline_xgb():
+def tune_hyperparameter(x_train_scale, y_train):
     """
-    Load Baseline xgb model
+    Obtain the optimal n_estimators
     """
-    xgb_model_loaded = pickle.load(open('../model/xgb_topic_classification_base.pkl', "rb"))
-    return xgb_model_loaded
+    model = XGBClassifier()
+    n_estimators = range(50, 1000, 50)
+    param_grid = dict(n_estimators=n_estimators)
+    kfold = StratifiedKFold(n_splits=10, shuffle=True, random_state=7)
+    grid_search = GridSearchCV(model, param_grid, scoring="neg_log_loss", n_jobs=-1, cv=kfold)
+    grid_result = grid_search.fit(x_train_scale,y_train)
+    print("Best: %f using %s" % (grid_result.best_score_, grid_result.best_params_))
+
+def final_xgb(x_train_scale, y_train):
+    """
+    Run Final xgb model
+    """
+    xgbc = XGBClassifier(n_estimators= 50 , seed = 27)
+    # Fit train data
+    xgbc_tfidf = xgbc.fit(x_train_scale, y_train)
+    return xgbc_tfidf
 
 def predict_and_evaluate_model(chosen_model, x_test_scale, y_test):
     """
-    1. Predict topic number of new data
+    1. Predict test y label
     2. Produce Classification report 
     3. Produce Confusion matrix
     """
@@ -141,6 +169,6 @@ def predict_and_evaluate_model(chosen_model, x_test_scale, y_test):
     report = classification_report(y_test, y_predicted_algo, output_dict=True,  zero_division=0)
     classfication_df = pd.DataFrame(report).transpose()
     
-    cm = confusion_matrix(y_test,  y_predicted_algo)
+    cm = confusion_matrix(y_test, y_predicted_algo)
     confusion_matrix_df = pd.DataFrame(cm)
     return (classfication_df, confusion_matrix_df)
