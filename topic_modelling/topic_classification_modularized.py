@@ -6,11 +6,9 @@ from sklearn.model_selection import train_test_split
 import numpy as np 
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import classification_report, confusion_matrix
-import os
-from xgboost import XGBClassifier
 from nltk import FreqDist
 from sklearn.model_selection import GridSearchCV
-from sklearn.model_selection import StratifiedKFold
+from sklearn.svm import SVC
 
 def load_lda_model():
     """
@@ -150,35 +148,15 @@ def convert_vector_to_scaled_array(train_vecs, y_train, test_vecs, y_test):
 
     return (x_train_scale, y_train, x_test_scale, y_test)
 
-def baseline_xgb(x_train_scale, y_train):
+def tune_hyperparameter(x_train, y_train):
     """
-    Run Baseline xgb model
+    Obtain the optimal C, gamma number and kernel
     """
-    xgbc_base = XGBClassifier(n_estimators= 100 , seed = 27)
-    # Fit train data
-    xgbc_tfidf_base = xgbc_base.fit(x_train_scale, y_train)
-    return xgbc_tfidf_base
-
-def tune_hyperparameter(x_train_scale, y_train):
-    """
-    Obtain the optimal n_estimators
-    """
-    model = XGBClassifier()
-    n_estimators = range(50, 1000, 50)
-    param_grid = dict(n_estimators=n_estimators)
-    kfold = StratifiedKFold(n_splits=10, shuffle=True, random_state=7)
-    grid_search = GridSearchCV(model, param_grid, scoring="neg_log_loss", n_jobs=-1, cv=kfold)
-    grid_result = grid_search.fit(x_train_scale,y_train)
-    print("Best: %f using %s" % (grid_result.best_score_, grid_result.best_params_))
-
-def final_xgb(x_train_scale, y_train):
-    """
-    Run Final xgb model
-    """
-    xgbc = XGBClassifier(n_estimators= 50 , seed = 27)
-    # Fit train data
-    xgbc_tfidf = xgbc.fit(x_train_scale, y_train)
-    return xgbc_tfidf
+    param_grid = {'C': [0.1,1, 10, 100], 'gamma': [1,0.1,0.01,0.001],'kernel': ['rbf', 'poly', 'sigmoid']}
+    grid = GridSearchCV(SVC(),param_grid,refit=True,verbose=2)
+    grid_result = grid.fit(x_train, y_train)
+    print(grid_result.best_params_)
+   
 
 def predict_and_evaluate_model(chosen_model, x_test_scale, y_test):
     """
@@ -190,7 +168,14 @@ def predict_and_evaluate_model(chosen_model, x_test_scale, y_test):
 
     report = classification_report(y_test, y_predicted_algo, output_dict=True,  zero_division=0)
     classfication_df = pd.DataFrame(report).transpose()
-    
     cm = confusion_matrix(y_test, y_predicted_algo)
     confusion_matrix_df = pd.DataFrame(cm)
     return (classfication_df, confusion_matrix_df)
+
+def baseline_svc(x_train_scale, y_train):
+    svm_tfidf = SVC(random_state= 1, C = 10, gamma = 10, kernel='sigmoid', decision_function_shape='ovo').fit(x_train_scale, y_train)
+    return svm_tfidf
+
+def final_svc (x_train_scale, y_train, c_num, gamma_num, kernel_name):
+    svm_tfidf_final = SVC(random_state= 1, C = c_num, gamma = gamma_num, kernel= kernel_name, decision_function_shape='ovo').fit(x_train_scale, y_train)
+    return svm_tfidf_final
