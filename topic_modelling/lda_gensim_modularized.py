@@ -2,13 +2,11 @@ import pandas as pd
 import gensim
 import gensim.corpora as corpora 
 from gensim import models
-import pyLDAvis.gensim
-import pyLDAvis
-import os
-from pathlib import Path
 from gensim.models import CoherenceModel
 from nltk import FreqDist
 import matplotlib.pyplot as plt
+import warnings
+warnings.filterwarnings("ignore")
 
 def read_data(path):
     """
@@ -217,15 +215,8 @@ def dominant_topic_per_review(chosen_model, corpus, texts):
     sent_topics_df = pd.concat([sent_topics_df, contents], axis=1)
     df_dominant_topic = sent_topics_df.reset_index()
     df_dominant_topic.columns = ['Document_No', 'Dominant_Topic', 'Topic_Perc_Contrib', 'Keywords', 'Text']
-    return(sent_topics_df, df_dominant_topic)
+    return(df_dominant_topic)
 
-def save_dominant_topic_per_review(lda_model, corpus_tfidf, data):
-    """
-    Find the dominant topic for each review and
-    save it to csv for later use in topic classification
-    """
-    df_topic_sents_keywords, df_topic_per_key = dominant_topic_per_review(lda_model, corpus_tfidf, data)
-    return (df_topic_sents_keywords, df_topic_per_key)
 
 def topic_distri_across_review(df):
     """
