@@ -2,7 +2,6 @@
 # adapted from https://towardsdatascience.com/unsupervised-nlp-topic-models-as-a-supervised-learning-input-cf8ee9e5cf28
 import gensim
 from gensim import corpora, models
-from gensim.corpora.dictionary import Dictionary
 import pandas as pd
 from sklearn.model_selection import train_test_split
 import numpy as np
@@ -10,11 +9,9 @@ import pickle
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import classification_report, confusion_matrix
 import os
-from xgboost import XGBClassifier
 from nltk import FreqDist
+from sklearn.svm import SVC
 from sklearn.model_selection import GridSearchCV
-from sklearn.model_selection import StratifiedKFold
-from sklearn.naive_bayes import MultinomialNB
 
 # split a sentence into a list 
 def split_sentence(text):
@@ -100,7 +97,7 @@ def save_result(path, y_test_algo, y_predicted_algo):
     return (classfication_df, confusion_matrix_df)
 
 # convert corpus to vector in order to feed it into sklearn models
-def create_vectors(corpuss, data, lda_model, k, type_of_vector):
+def create_vectors(corpuss, data, lda_model, k):
     # create tf-idf model
     tfidf_corpus = models.TfidfModel(corpuss, smartirs='ntc')
     corpus_tfidf = tfidf_corpus[corpuss]
@@ -136,8 +133,8 @@ if __name__ == '__main__':
     x_test_corpus = preprocess(test_data, dictionary)
     
     # 3 is the optimal number of topics that LDA using Tfidf choses
-    train_vecs = create_vectors(x_train_corpus, train, lda_tfidf_model, 3, 'train')
-    test_vecs = create_vectors(x_test_corpus, test, lda_tfidf_model, 3, 'test')
+    train_vecs = create_vectors(x_train_corpus, train, lda_tfidf_model, 3)
+    test_vecs = create_vectors(x_test_corpus, test, lda_tfidf_model, 3)
     
     # convert to numpy array 
     x_train = np.array(train_vecs)
@@ -154,53 +151,39 @@ if __name__ == '__main__':
     os.makedirs('result/', exist_ok=True)
     os.makedirs('../model/topic_classification/', exist_ok=True)
     
-    """
-    # Naive Bayes
-    # Unable to use scaled data for naive bayes as it disallowed negative values
-    nb_tfidf = MultinomialNB().fit(x_train, y_train)
+    # SVM
+    svm_tfidf = SVC(random_state= 1, C = 10, gamma = 10, kernel='sigmoid', decision_function_shape='ovo').fit(x_train_scale, y_train)
+    # save model
+    pickle.dump(svm_tfidf, open('../model/topic_classification/svm_topic_classification_basic.pkl', 'wb'))
     # predict test topic
-    nb_y_predict = nb_tfidf.predict(x_test)
+    svm_y_predict = svm_tfidf.predict(x_test_scale) 
     # save classification report and confusion matrix in csv
-    save_result('./result/naive_bayes_results.csv', y_test, nb_y_predict)
-    # Accuracy: 0.921028466
-    """
-
-    # Baseline XGBoost 
-    xgbc_base = XGBClassifier(n_estimators= 100 , seed = 27)
-    # Fit train data
-    xgbc_tfidf_base = xgbc_base.fit(x_train_scale, y_train)
-     # save base model
-    pickle.dump(xgbc_tfidf_base, open('../model/topic_classification/xgb_topic_classification_base.pkl', 'wb'))
-    # Predict new topic based on test result
-    xgbc_y_predict_base = xgbc_tfidf_base.predict(x_test_scale)
-    save_result('./result/base_xgbc_result.csv', y_test, xgbc_y_predict_base)
-    # Accuracy: 0.977043159
+    classification_df, confusion_matrix_df = save_result('./result/svm_result_base.csv', y_test, svm_y_predict)
+    print(classification_df)
+    print(confusion_matrix_df)
+    # Accuracy:0.916437098
     
-    # grid search
-    model = XGBClassifier()
-    n_estimators = range(50, 1000, 50)
-    param_grid = dict(n_estimators=n_estimators)
-    kfold = StratifiedKFold(n_splits=10, shuffle=True, random_state=7)
-    grid_search = GridSearchCV(model, param_grid, scoring="neg_log_loss", n_jobs=-1, cv=kfold)
-    grid_result = grid_search.fit(x_train_scale,y_train)
-    # summarize results
-    print("Best: %f using %s" % (grid_result.best_score_, grid_result.best_params_))
-
-    # Final XGBoost
-    xgbc = XGBClassifier(n_estimators = 50 , seed = 27) 
-    # Fit train data
-    xgbc_tfidf_final = xgbc.fit(x_train_scale, y_train)
-    # save final model
-    pickle.dump(xgbc_tfidf_final, open('../model/topic_classification/xgb_topic_classification_FINAL.pkl', 'wb'))
-    # Predict new topic based on test result
-    xgbc_y_predict = xgbc_tfidf_final.predict(x_test_scale)
-    save_result('./result/final_xgbc_result.csv', y_test, xgbc_y_predict)
+    # Hypertuning
+    param_grid = {'C': [0.1,1, 10, 100], 'gamma': [1,0.1,0.01,0.001],'kernel': ['rbf', 'poly', 'sigmoid']}
+    grid = GridSearchCV(SVC(),param_grid,refit=True,verbose=2)
+    grid_result = grid.fit(x_train_scale,y_train)
+    print(grid_result.best_params_)
+    
+    # Final SVC model
+    svm_tfidf_final = SVC(random_state= 1, C = 10, gamma = 1, kernel='rbf', decision_function_shape='ovo').fit(x_train_scale, y_train)
+    # save model
+    pickle.dump(svm_tfidf, open('../model/topic_classification/svm_topic_classification_final.pkl', 'wb'))
+    # predict test topic
+    svm_y_predict_final = svm_tfidf_final.predict(x_test_scale) 
+    # save classification report and confusion matrix in csv
+    classification_df, confusion_matrix_df = save_result('./result/svm_result_final.csv', y_test, svm_y_predict_final)
+    print(classification_df)
+    print(confusion_matrix_df)
     # Accuracy: 0.977961433
+
+
+    
    
-
-
-
-
 
    
    
