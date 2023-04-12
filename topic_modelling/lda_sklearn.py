@@ -74,7 +74,7 @@ def get_n_topic(df,vectorized_text):
         lg_scores.append(lda_model.score(vectorized_text))
         perp_scores.append(lda_model.perplexity(vectorized_text))
         n_topic = cv_scores.index(max(cv_scores)) + 1 
-        return n_topic  #0 index + 1
+    return n_topic  #0 index + 1
 
 def build_lda(n,vectorized_text): # n is the ideal number of topics
     lda_model = LatentDirichletAllocation(batch_size=128, doc_topic_prior=None,evaluate_every=-1, 
