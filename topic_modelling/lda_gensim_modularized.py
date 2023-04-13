@@ -7,6 +7,7 @@ from nltk import FreqDist
 import matplotlib.pyplot as plt
 import warnings
 warnings.filterwarnings("ignore")
+import seaborn as sns
 
 def read_data(path):
     """
@@ -257,3 +258,33 @@ def unique_sets(lda_model):
     unique_sets = unique_keyword_per_topic(lda_model)
     for i in range (len(unique_sets)):
         print('Topic {}: {}'.format(i, unique_sets[i]))
+
+def get_all_topic_distribution(chosen_model, corpus):
+    """
+    Finding the topic percent contribution for each review
+    """
+    sent_topics_df = pd.DataFrame()
+    topic0_prob = []
+    topic1_prob = []
+    topic2_prob = []
+    dominant_topic = []
+    for i, row in enumerate(chosen_model[corpus]):
+        row = sorted(row, key=lambda x: (x[1]), reverse=True)
+        for j, (topic_num, prop_topic) in enumerate(row):
+            if j == 0:
+                dominant_topic.append(topic_num)
+            if int(topic_num) == 0:
+                topic0_prob.append(round(prop_topic,4))
+            elif int(topic_num) == 1:
+                topic1_prob.append(round(prop_topic,4))
+            else:
+                topic2_prob.append(round(prop_topic,4))
+    sent_topics_df['Topic0'] = topic0_prob
+    sent_topics_df['Topic1'] = topic1_prob
+    sent_topics_df['Topic2'] = topic2_prob
+    sent_topics_df['Dominant Topic'] = dominant_topic
+    sns.displot(sent_topics_df['Topic0'].values).set(title='Topic 0')
+    sns.displot(sent_topics_df['Topic1'].values).set(title='Topic 1')
+    sns.displot(sent_topics_df['Topic2'].values).set(title='Topic 2')
+    plt.show()
+    return sent_topics_df
