@@ -9,28 +9,48 @@ from sklearn.metrics import classification_report, confusion_matrix
 from nltk import FreqDist
 from sklearn.model_selection import GridSearchCV
 from sklearn.svm import SVC
+import pickle
 
-def load_lda_model():
+def load_lda_model(path):
     """
     load lda_tfidf model 
+    '/model/lda_gensim/lda_tfidf_model_FINAL.pkl'
     """
-    lda_tfidf_model = gensim.models.LdaMulticore.load('../model/lda_gensim/lda_tfidf_model_FINAL.pkl')
+    lda_tfidf_model = gensim.models.LdaMulticore.load(path)
     
     return lda_tfidf_model
 
-def load_id2word():
+def load_id2word(path):
     """
     load lda_tfidf dictionary
+    '../model/lda_gensim/lda_tfidf_model_FINAL.pkl.id2word'
     """
-    dictionary = corpora.Dictionary.load('../model/lda_gensim/lda_tfidf_model_FINAL.pkl.id2word')
+    dictionary = corpora.Dictionary.load(path)
     return dictionary
 
-def load_labelled_csv():
+def load_labelled_csv(path):
     """
     Read in review that has labelled topic which was done by LDA
+    'topic_modelling/result/dominant_topic_in_each_sentence.csv'
     """
-    processed_data = pd.read_csv('./result/dominant_topic_in_each_sentence.csv')
+    processed_data = pd.read_csv(path)
     return processed_data
+
+def load_base_svc(path):
+    """
+    Load Base SVC model
+    'model/topic_classification/svm_topic_classification_basic.pkl'
+    """
+    base_svc = pickle.load(open(path, 'rb'))
+    return base_svc
+
+def load_final_svc(path):
+    """
+    Load Final SVC model
+    'model/topic_classification/svm_topic_classification_final.pkl'
+    """
+    final_svc = pickle.load(open(path, 'rb'))
+    return final_svc
 
 def split_test_train(processed_data):
     """
