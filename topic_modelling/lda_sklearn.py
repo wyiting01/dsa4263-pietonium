@@ -1,6 +1,7 @@
 #Imports
 import pandas as pd
 import numpy as np
+import seaborn as sns
 import re
 import matplotlib.pyplot as plt
 import nltk
@@ -87,7 +88,7 @@ def build_lda(n,vectorized_text): # n is the ideal number of topics
     #lda_model.components_.shape
     return lda_model   
 
-def get_topics(lda_model):
+def get_topics(lda_model,df):
     vectorizer = TfidfVectorizer(lowercase=True,
                              analyzer='word',
                              stop_words = 'english',
@@ -95,7 +96,7 @@ def get_topics(lda_model):
                              max_df = 0.75,
                              min_df = 50,
                              max_features=10000)
-    
+    vectorized_text = vectorizer.fit_transform(df['processed_text'])
     vocab = vectorizer.get_feature_names_out()
     for i, comp in enumerate(lda_model.components_):
         vocab_comp = zip(vocab, comp)
@@ -117,6 +118,18 @@ def get_dominant_topics(lda_model,df):
     topics = df.dominant_topic.value_counts().sort_index()
     return topics
 
+def get_topic_weights(lda_model,df):
+    vectorized_text = vectorize(df)
+    lda_topics = lda_model.fit_transform(vectorized_text)
+    colnames = ["Topic" + str(i) for i in range(lda_model.n_components)]
+    docnames = ["Doc" + str(i) for i in range(len(df['processed_text']))]
+    df_doc_topic = pd.DataFrame(np.round(lda_topics,2),columns=colnames,index=docnames)
+    significant_topic = np.argmax(df_doc_topic.values,axis=1)
+    df_doc_topic['dominant_topic'] = significant_topic 
+    sns.displot(df_doc_topic['Topic0'].values)
+    sns.displot(df_doc_topic['Topic1'].values)
+    sns.displot(df_doc_topic['Topic2'].values)
+    return df_doc_topic
 
 #######################################Evaluation###############################
 #SVM Evaluation
