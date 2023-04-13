@@ -14,6 +14,7 @@ from sklearn.naive_bayes import MultinomialNB
 from sklearn import linear_model
 import os
 from sklearn.svm import SVC
+from xgboost import XGBClassifier
 
 # split a sentence into a list 
 def split_sentence(text):
@@ -120,7 +121,6 @@ if __name__ == '__main__':
     train_vecs = create_vectors(x_train_corpus, train, lda_tfidf_model, 3, 'train')
     test_vecs = create_vectors(x_test_corpus, test, lda_tfidf_model, 3, 'test')
     
-
     # convert to numpy array 
     x_train = np.array(train_vecs)
     y_train = np.array(y_train)
@@ -134,7 +134,22 @@ if __name__ == '__main__':
 
     # create directory to keep results
     os.makedirs('result/', exist_ok=True)
+    
+    # Baseline XGBoost 
+    xgbc = XGBClassifier(learning_rate = 0.01,n_estimators= 600 , seed = 27)
+    xgbc_lda = xgbc.fit(x_train_scale, y_train)
+    xgbc_ytest = xgbc_lda.predict(x_test_scale)
+    save_result('./result/xgbc_result_test.csv', y_test, xgbc_ytest)
+    # Accuracy: 0.977043159
 
+    # Final XGBoost
+    xgbc = XGBClassifier(learning_rate =0.1,n_estimators= 1000 , seed = 27) 
+    xgbc_lda = xgbc.fit(x_train_scale, y_train)
+    xgbc_ytest = xgbc_lda.predict(x_test_scale)
+    save_result('./result/xgbc_result.csv', y_test, xgbc_ytest)
+    # Accuracy: 0.980716253
+
+    """
     # SVM
     svm_tfidf = SVC(random_state= 1, kernel='rbf', decision_function_shape='ovo').fit(x_train_scale, y_train)
     # save model
@@ -176,7 +191,7 @@ if __name__ == '__main__':
     save_result('./result/sgd_results.csv', y_test, sgd_y_predict)
     # Accuracy: 0.977961433
 
-    
+    """
 
 
    
