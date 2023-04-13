@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 from nltk import FreqDist
 import warnings
 warnings.filterwarnings("ignore")
+import seaborn as sns
 
 # split a sentence into a list 
 def split_sentence(text):
@@ -193,6 +194,40 @@ def get_tfidf_corpus(bow_corpus):
     corpus_tfidf = tfidf[bow_corpus]
     return corpus_tfidf
 
+# Finding the topic percent contribution for each review
+def get_all_topic_distribution(chosen_model, corpus):
+    # Init output
+    sent_topics_df = pd.DataFrame()
+    topic0_prob = []
+    topic1_prob = []
+    topic2_prob = []
+    dominant_topic = []
+    # Get main topic in each review
+    for i, row in enumerate(chosen_model[corpus]):
+        row = sorted(row, key=lambda x: (x[1]), reverse=True)
+        # Get the Dominant topic, Perc Contribution and Keywords for each document
+        for j, (topic_num, prop_topic) in enumerate(row):
+            if j == 0:
+                dominant_topic.append(topic_num)
+            if int(topic_num) == 0:
+                topic0_prob.append(round(prop_topic,4))
+            elif int(topic_num) == 1:
+                topic1_prob.append(round(prop_topic,4))
+            else:
+                topic2_prob.append(round(prop_topic,4))
+    sent_topics_df['Topic0'] = topic0_prob
+    sent_topics_df['Topic1'] = topic1_prob
+    sent_topics_df['Topic2'] = topic2_prob
+    sent_topics_df['Dominant Topic'] = dominant_topic
+    sns.displot(sent_topics_df['Topic0'].values).set(title='Topic 0')
+    plt.savefig('./result/topic0_distribution.png', dpi=300, bbox_inches='tight')
+    sns.displot(sent_topics_df['Topic1'].values).set(title='Topic 1')
+    plt.savefig('./result/topic1_distribution.png', dpi=300, bbox_inches='tight')
+    sns.displot(sent_topics_df['Topic2'].values).set(title='Topic 2')
+    plt.savefig('./result/topic2_distribution.png', dpi=300, bbox_inches='tight')
+    #plt.show()
+    return sent_topics_df
+
 if __name__ == '__main__':
     
     # read in post processed data
@@ -207,7 +242,7 @@ if __name__ == '__main__':
     
     # create tfidf corpus
     corpus_tfidf = get_tfidf_corpus(bow_corpus)
-    
+
     # number of topics for baseline
     num_topics = 2
 
@@ -223,7 +258,6 @@ if __name__ == '__main__':
     coherence_model_lda = CoherenceModel(model=lda_model_tfidf, texts = data_words, dictionary=id2word, coherence='c_v')
     coherence_lda = coherence_model_lda.get_coherence()
     print('Baseline Coherence Score: ', coherence_lda)
-    # Baseline Coherence Score: 0.3741965329013099
     
     # create directory to keep models
     os.makedirs('../model/lda_gensim/', exist_ok=True)
@@ -239,8 +273,6 @@ if __name__ == '__main__':
     coherence_score_topic.to_csv('./result/coherence_score_topic.csv')
     print('Final Coherence Score:', final_score)
     print('Final number of topics used:', final_num_topics)
-    # Final Coherence Score: 0.6189313197164877
-    # Final number of topics used: 3
 
     # final model with parameters yielding highest coherence score
     final_lda_model_tfidf = gensim.models.LdaMulticore(corpus=corpus_tfidf,
@@ -279,7 +311,11 @@ if __name__ == '__main__':
     
     # Topic distribution across documents
     df_dominant_topic = topic_distri_across_review(df_topic_per_key)
-    # Dominant topics: Topic 0 - 2453 reviews, Topic 2 - 2235 reviews, Topic 0 - 756 reviews
+    
+    # Topic percentage contribution for each review
+    topic_perc_dis = get_all_topic_distribution(lda_tfidf_model, corpus_tfidf)
+    
+    topic_perc_dis.to_csv('./result/topic_perc_dis.csv')
 
     unique_sets = unique_keyword_per_topic(lda_tfidf_model)
     for i in range (len(unique_sets)):
