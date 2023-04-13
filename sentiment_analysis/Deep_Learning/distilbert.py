@@ -187,6 +187,28 @@ def scoring_file_thread(filename, model, tokenizer):
         error_message = str(exc.replace("\n", ""))
         return error_message
 
+def scoring_file_thread_df(df, model, tokenizer): 
+    """
+    Read a dataframe (pd.DataFrame) and return the pd.DataFrame of columns ['Time', 'Text', 'predicted_sentiment', 'predicted_sentiment_probability']
+    """
+    try:
+        df = df.loc[~df['Text'].isna()]
+        df['processed_text'] = df['Text'].apply(lambda x: noise_remove_helper(x))
+        reviews = np.array(df['processed_text'])
+
+        with ThreadPoolExecutor(max_workers=500) as executor:
+            future_result_list = [executor.submit(scoring_single_review, review, model, tokenizer) for review in reviews]
+        result_list = [x.result() for x in concurrent.futures.as_completed(future_result_list)]
+        final_df = pd.concat([df[['Time', 'Text']], pd.DataFrame(data=result_list, columns=['predicted_sentiment', 'predicted_sentiment_probability'])], axis=1)
+        final_df['predicted_sentiment'] = final_df['predicted_sentiment'].apply(lambda x: id_2_label(x))
+        return final_df
+    
+    except Exception as e:
+        import traceback
+        exc = traceback.format_exc()
+        logging.error('Error from function scoring_file_thread')
+        error_message = str(exc.replace("\n", ""))
+        return error_message
 
 # For App and Presentation
 def scoring_file_dummy(filename, model, tokenizer):
@@ -219,6 +241,39 @@ def scoring_file_dummy(filename, model, tokenizer):
         logging.error('Error from function scoring_file_dummy')
         error_message = str(exc.replace("\n", ""))
         return error_message
+
+# For App and Presentation
+def scoring_file_dummy_df(df, model, tokenizer):
+    """
+    Read the dataframe (pd.DataFrame) and return the pd.DataFrame of columns []'Time', 'Text', 'predicted_sentiment', 'predicted_sentiment_probability']
+
+    """
+    try:
+        df = df.loc[~df['Text'].isna()]
+        df['processed_text'] = df['Text'].apply(lambda x: noise_remove_helper(x))
+
+        predicted_labels = []
+        predicted_label_probs = []
+        with torch.no_grad():
+            for text in df['processed_text']:
+                inputs = tokenizer(text, return_tensors="pt", truncation=True)
+                logits = model(**inputs).logits
+                predicted_class_id = logits.argmax().item()
+                predicted_class_prob = round(F.softmax(logits, dim=1).flatten()[predicted_class_id].item(), 3)
+                predicted_labels.append(predicted_class_id)
+                predicted_label_probs.append(predicted_class_prob)
+        df['predicted_sentiment'] = pd.Series(predicted_labels)
+        df['predicted_sentiment'] = df['predicted_sentiment'].apply(lambda x: id_2_label(x))
+        df['predicted_sentiment_probability'] = pd.Series(predicted_label_probs)
+        return df[['Time', 'Text', 'predicted_sentiment', 'predicted_sentiment_probability']]
+    except Exception as e:
+        import traceback
+        exc = traceback.format_exc()
+        logging.error('Error from function scoring_file_dummy')
+        error_message = str(exc.replace("\n", ""))
+        return error_message
+
+
 
 # For evaluate.py (and App if Sentiment(label) is provided)
 def visualize_confusion_matrix(predicted_labels, real_labels):
