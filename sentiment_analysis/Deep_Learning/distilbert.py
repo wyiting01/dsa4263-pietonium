@@ -16,6 +16,7 @@ from concurrent.futures import ThreadPoolExecutor
 import concurrent.futures
 import logging
 
+
 ## OVERALL FUNCTIONS THAT CAN BE USED BOTH TRAINING AND INFERENCING ##
 CONFIG = {
     'this_time': 1,
@@ -99,11 +100,11 @@ def noise_remove_helper(raw_text):
     # remove non-word characters like #,*,% etc
     target_input = re.sub(r'\W',' ', target_input)
     
-    #will remove extra spaces
-    target_input = re.sub(r'\s+',' ',target_input)
-
     #remove words less than 3 characters
     target_input = re.sub(r'\b\w{2}\b', '', target_input)
+
+    ##will remove extra spaces
+    target_input = re.sub(r'\s+',' ',target_input)
 
     return target_input 
 
@@ -113,8 +114,9 @@ def label_to_integer_helper(label):
     elif 'positive' in str.lower(label):
         return 1
     else:
-        return 'Cannot detect label'
+        return None
 
+# For App
 def scoring_single_review(raw_review, model, tokenizer):
     """
     Read a raw review and return tuple of (predicted sentiment, predicted sentiment probability)
@@ -136,6 +138,11 @@ def scoring_single_review(raw_review, model, tokenizer):
         error_message = str(exc.replace("\n", ""))
         return error_message
 
+def id_2_label(model, id):
+    """
+    Return the text label Negative / Positive from predicted labels 0 / 1
+    """
+    return model.config.id2label(id)
 
 def prepare_inference_data(filename):
     """
@@ -156,9 +163,11 @@ def prepare_inference_data(filename):
         error_message = str(exc.replace("\n", ""))
         return error_message
 
+
+# For App and Presentation
 def scoring_file_thread(filename, model, tokenizer): 
     """
-    read the filename and return the pd.DataFrame of columns []'Time', 'Text', 'predicted_sentiment', 'predicted_sentiment_probability']
+    Read the filename and return the pd.DataFrame of columns ['Time', 'Text', 'predicted_sentiment', 'predicted_sentiment_probability']
     """
     try:
         df = prepare_inference_data(filename)
@@ -167,7 +176,10 @@ def scoring_file_thread(filename, model, tokenizer):
         with ThreadPoolExecutor(max_workers=500) as executor:
             future_result_list = [executor.submit(scoring_single_review, review, model, tokenizer) for review in reviews]
         result_list = [x.result() for x in concurrent.futures.as_completed(future_result_list)]
-        return pd.concat([df[['Time', 'Text']], pd.DataFrame(data=result_list, columns=['predicted_sentiment', 'predicted_sentiment_probability'])], axis=1)
+        final_df = pd.concat([df[['Time', 'Text']], pd.DataFrame(data=result_list, columns=['predicted_sentiment', 'predicted_sentiment_probability'])], axis=1)
+        final_df['predicted_sentiment'] = final_df['predicted_sentiment'].apply(lambda x: id_2_label(x))
+        return final_df
+    
     except Exception as e:
         import traceback
         exc = traceback.format_exc()
@@ -176,10 +188,11 @@ def scoring_file_thread(filename, model, tokenizer):
         return error_message
 
 
-
+# For App and Presentation
 def scoring_file_dummy(filename, model, tokenizer):
     """
-    read the filename and return the pd.DataFrame of columns []'Time', 'Text', 'predicted_sentiment', 'predicted_sentiment_probability']
+    Read the filename and return the pd.DataFrame of columns []'Time', 'Text', 'predicted_sentiment', 'predicted_sentiment_probability']
+
     """
     try:
         df = pd.read_csv(filename)
@@ -197,6 +210,7 @@ def scoring_file_dummy(filename, model, tokenizer):
                 predicted_labels.append(predicted_class_id)
                 predicted_label_probs.append(predicted_class_prob)
         df['predicted_sentiment'] = pd.Series(predicted_labels)
+        df['predicted_sentiment'] = df['predicted_sentiment'].apply(lambda x: id_2_label(x))
         df['predicted_sentiment_probability'] = pd.Series(predicted_label_probs)
         return df[['Time', 'Text', 'predicted_sentiment', 'predicted_sentiment_probability']]
     except Exception as e:
@@ -205,12 +219,13 @@ def scoring_file_dummy(filename, model, tokenizer):
         logging.error('Error from function scoring_file_dummy')
         error_message = str(exc.replace("\n", ""))
         return error_message
-    
+
+# For evaluate.py (and App if Sentiment(label) is provided)
 def visualize_confusion_matrix(predicted_labels, real_labels):
     """
     :param predicted_labels: This is an array-like with values that are 0 or 1, shape (n_samples,)
     :param real_labels: This is an array with values that are 0 or 1, shape (n_samples,)
-    :return:
+    :return: show figure
     """
     try:
         from sklearn.metrics import ConfusionMatrixDisplay, confusion_matrix
@@ -230,144 +245,51 @@ def visualize_confusion_matrix(predicted_labels, real_labels):
         error_message = str(exc.replace("\n", ""))
         return error_message
 
-## FUNCIONS ONLY FOR TRAINING ##
-# These functions below are modules used in training pipeline #
-
-def build_config(config):
-    """
-    Return model architecture, training arguments, training tokenizer, data collator
-
-    :param config: configuration of model hyperparameters and variables used in training
-    :type config: dict
-    """
-    id2label = {0: 'Negative', 1: 'Positive'}
-    label2id = {'Negative': 0, 'Positive': 1} 
-
+# For evaluate.py (and App if Sentiment(label) is provided)
+def confusion_matrix(predicted_labels, real_labels):
     try:
-        model = AutoModelForSequenceClassification.from_pretrained(
-            config['pretrained_model'], num_labels=2, id2label=id2label, label2id=label2id
-        )
-        from transformers import TrainingArguments
-        training_args = TrainingArguments(
-            output_dir=config["output_dir"],
-            learning_rate=config['learning_rate'],
-            per_device_train_batch_size=config['per_device_train_batch_size'],
-            per_device_eval_batch_size=config['per_device_eval_batch_size'],
-            num_train_epochs=config['num_train_epochs'],
-            weight_decay=config['weight_decay'],
-            evaluation_strategy=config['evaluation_strategy'],
-            save_strategy=config['save_strategy'],
-            load_best_model_at_end=True,
-            push_to_hub=False,
-        )
-
-        training_tokenizer = AutoTokenizer.from_pretrained(config['pretrained_model'])
-        data_collator = DataCollatorWithPadding(tokenizer=training_tokenizer)
-        
-        return model, training_args, training_tokenizer, data_collator
-
-    except Exception as e:
-        import traceback 
-        exc = traceback.format_exc()
-        error_message = str(exc.replace("\n", ""))
-        return error_message
-    
-def split_data(df, config):
-    """
-    Split the dataframe into training, evaluating, and testing data
-
-    :param df: input dataframe
-    :type df: pd.DataFrame
-    :param config: configuration of model hyperparameters and variables used in training
-    :type config: dict
-
-    Output: tuple of (train df, eval df, test df)
-    Format: (pd.DataFrame, pd.DataFrame, pd.DataFrame)
-    """
-    try:
-        from sklearn.model_selection import train_test_split
-
-        train_df, test_df = train_test_split(df, test_size = config['test_size'], random_state=config['random_seed'], shuffle=True)
-        train_df, val_df = train_test_split(train_df, test_size = config['val_size'], random_state=config['random_seed'], shuffle=True)
-        
-        return (train_df, val_df, test_df)
-    except Exception as e:
-        import traceback 
-        exc = traceback.format_exc()
-        error_message = str(exc.replace("\n", ""))
-        return error_message
-
-def prepare_training_data(df, config, training_tokenizer):
-    """
-    create dataset objects of training, validating and testing data, full dataset and tokenized dataset
-
-    :param df: available data for pipeline (which will be splitted into train, val, test)
-    :type df: pd.DataFrame
-    :param config: configuration of model hyperparameters and variables used in training
-    :type config: dict
-    :param training_tokenizer: returned from build_config()
-    :type training_tokenizer: transformers.AutoTokenizer
-    """
-    try:
-        train_df, val_df, test_df = split_data(df, config=config)
-
-        train_dataset = make_dataset(train_df)
-        val_dataset = make_dataset(val_df)
-        test_dataset = make_dataset(test_df)
-
-        full_dataset = datasets.DatasetDict({
-            'train': train_dataset,
-            'test': test_dataset,
-            'val': val_dataset
-        })
-
-        
-        def preprocess_function(examples):
-            return training_tokenizer(examples['text'], truncation=True)
-
-        tokenized_dataset = full_dataset.map(preprocess_function, batched=True)
-        return tokenized_dataset, full_dataset, train_dataset, val_dataset, test_dataset
-    
+        from sklearn.metrics import classification_report
+        report = classification_report(real_labels, predicted_labels, output_dict=True)
+        return report
+    # print('positive: ', report['1'])
+    # print('negative: ', report['0'])
+    # print('accuracy: ', report['accuracy'])
+    # For evaluate.py
     except Exception as e:
         import traceback
         exc = traceback.format_exc()
+        logging.error('Error from function confusion_matrix')
         error_message = str(exc.replace("\n", ""))
         return error_message
 
-
-accuracy = evaluate.load("accuracy")
-def compute_metrics(eval_pred):
+# for evaluate.py
+def predict(input, model, tokenizer):
     """
-    the metrics will be passed to model configuration as assessment for training
-    """
-    predictions, labels = eval_pred
-    predictions = np.argmax(predictions, axis=1)
-    return accuracy.compute(predictions=predictions, references=labels)
+    :param input: processed input (ex: processed_text) of array-like with shape (n,) OR single review (string)
 
-
-
-def train(model, training_args, tokenized_dataset, tokenizer, data_collator, compute_metrics):
-    """
-    Run the training process
-
-    :params model, training_args, tokenizer, data_collator: return from build_config(**argss)
-    :param tokenized_dataset: returned from prepare_training_data(**args)
-    :param compute_metrics: a function to be passed into trainer 
+    Output:
+        If single review (str) -> return (predicted_class_id, predicted_class_prob) by function scoring_single_review
+        
+        If array-like -> return dict of {'preds': predicted_labels, 'preds_prob': predicted_label_probs}
     """
     try:
-        from transformers import Trainer
-        trainer = Trainer(
-            model=model,
-            args=training_args,
-            train_dataset=tokenized_dataset["train"],
-            eval_dataset=tokenized_dataset["val"],
-            tokenizer=tokenizer,
-            data_collator=data_collator,
-            compute_metrics=compute_metrics,
-        )
-        trainer.train()
+        if type(input) == str:
+            return scoring_single_review(input, model, tokenizer)
+        else:
+            predicted_labels = []
+            predicted_label_probs = []
+            with torch.no_grad():
+                for text in input:
+                    inputs = tokenizer(text, return_tensors="pt", truncation=True)
+                    logits = model(**inputs).logits
+                    predicted_class_id = logits.argmax().item()
+                    predicted_class_prob = round(F.softmax(logits, dim=1).flatten()[predicted_class_id].item(), 3)
+                    predicted_labels.append(predicted_class_id)
+                    predicted_label_probs.append(predicted_class_prob)
+            return {'preds': predicted_labels, 'preds_prob': predicted_label_probs}
     except Exception as e:
         import traceback
         exc = traceback.format_exc()
+        logging.error('Error from function predict()')
         error_message = str(exc.replace("\n", ""))
         return error_message
