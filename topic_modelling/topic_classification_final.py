@@ -146,7 +146,7 @@ if __name__ == '__main__':
     scaler = StandardScaler()
     x_train_scale = scaler.fit_transform(x_train)
     x_test_scale = scaler.fit_transform(x_test)
-    
+
     # create directory to keep results
     os.makedirs('result/', exist_ok=True)
     os.makedirs('../model/topic_classification/', exist_ok=True)
@@ -180,7 +180,7 @@ if __name__ == '__main__':
     print(classification_df)
     print(confusion_matrix_df)
     # Accuracy: 0.977961433
-
+ 
 
     
    
