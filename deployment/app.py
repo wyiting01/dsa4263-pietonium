@@ -242,6 +242,7 @@ topics_response.text
 '''
 @app.route('/get_topics', methods=['GET']) # havent try yet
 def get_topics():
+    uploaded_filename = "data/uploaded_reviews.csv"
     filename = "data/processed_uploaded_reviews.csv"
     text_col_name = 'processed_text'
     
@@ -249,6 +250,7 @@ def get_topics():
         input_filename = request.args.get('filename')
         if input_filename in file_list:
             filename = input_filename
+            uploaded_filename = UPLOAD_FILE_PATH + filename
             filename = UPLOAD_FILE_PATH + "processed_" + filename
             print("filename is", filename)
         else:
@@ -258,6 +260,7 @@ def get_topics():
     if request.args.get('text_col_name'):
         text_col_name = request.args.get('text_col_name')
 
+    uploaded_data = pd.read_csv(uploaded_filename)
     data = pd.read_csv(filename)
     test_data = data[text_col_name].values.tolist()
     x_test_corpus = lda_preprocess(test_data, lda_dictionary)
@@ -266,5 +269,8 @@ def get_topics():
     scaler = StandardScaler()
     x_test_scale = scaler.fit_transform(x_test)
     x_test_prediction = lda_lr_model.predict(x_test_scale)
+    uploaded_data['predicted_topic'] = x_test_prediction
+    print('SDLFJSLDKFJ:', uploaded_filename)
+    uploaded_data.to_csv(uploaded_filename, index = False)
 
     return 'Topics predicted'
