@@ -24,6 +24,9 @@ def test_scoring_single_review(load_model):
 
 
 def test_scoring_file_dummy(load_model):
+    """
+    Function to test the output df of the function
+    """
     model, tokenizer = load_model
     path = "../../data/curated/reviews/cleaned_reviews_copy.csv"
     returned_df = scoring_file_dummy(path, model, tokenizer)
