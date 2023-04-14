@@ -113,6 +113,16 @@ def build_config(config):
         return error_message
     
 def preprocess_data_for_train(filename):
+    """
+    Read in a csv file and return pd.DataFrame with columns ['Sentiment', 'processed_text'].
+    Labels are encoded to 1 / 0
+    Text is processed to leave out noises
+
+    :param filename: csv filename
+    :type filename: str
+    
+    Output: pd.DataFrame
+    """
     try:
         df = pd.read_csv(filename)
         df = df.loc[~df['Text'].isna()]
@@ -228,6 +238,15 @@ def train(model, training_args, tokenized_dataset, tokenizer, data_collator, com
 
 
 def load_model_dynamic(model_link):
+    """
+    Load the model using Hugging Face builtin method AutoModelForSequenceClassification.from_pretrained().
+    Model link can be local or from Hugging Face hub
+
+    :param model_link: path to model
+    :type model_link: str
+
+    Output: tuple of (model, tokenizer)
+    """
     try:
         from transformers import AutoTokenizer, AutoModelForSequenceClassification
         import torch
@@ -243,5 +262,8 @@ def load_model_dynamic(model_link):
         return error_message
 
 def hasGPU():
+    """
+    Check if the GPU can be used
+    """
     import torch
     torch.cuda.is_available()
