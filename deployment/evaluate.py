@@ -25,6 +25,7 @@ of these models.
 def evaluate_with_models(x_test, bert_x_test, y_test, target_models):
     result_dict = {}
     for model_name, model in target_models:
+        print(f'Evaluating {model_name} ...')
         model_result_dict = {}
         if model_name != "bert":
             predicted_y = model.predict(x_test)
@@ -32,8 +33,8 @@ def evaluate_with_models(x_test, bert_x_test, y_test, target_models):
         else:
             model_hf, tokenizer_hf = model
             predictions = db_predict(bert_x_test, model=model_hf, tokenizer=tokenizer_hf)
-            predicted_y = predictions['preds']
-            predicted_prob_y = predictions['preds_prob']
+            predicted_y = np.array(predictions['preds'])
+            predicted_prob_y = np.array(predictions['preds_prob'])
 
         model_result_dict["prediction"] = predicted_y
         model_result_dict["prediction_prob"] = predicted_prob_y
