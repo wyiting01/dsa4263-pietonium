@@ -1,7 +1,6 @@
 import streamlit as st
 
-st.set_page_config(page_title = 'Pietonium Sentiment Prediction App', 
-                   page_icon = ":chart_increasing:", 
+st.set_page_config(page_title = 'Pietonium Reviews App',
                    layout = "wide")
 
 
@@ -12,9 +11,9 @@ st.set_page_config(page_title = 'Pietonium Sentiment Prediction App',
 # '''
 
 with st.container():
-    st.title("Welcome to Pietonium Sentiment Prediction App :wave:")
-    st.subheader("Need help understanding the sentiments of reviews?")
-    st.write("This app will help to output the likely sentiment of any review(s) you input.")
+    st.title("Welcome to Pietonium Reviews App :wave:")
+    st.subheader("Need help understanding the sentiment or topic of reviews?")
+    st.write("This app will help you with that!")
 
 
 # ----- DIVIDER -----
@@ -34,14 +33,12 @@ with st.container():
     st.markdown(
     """
     In the sidebar on the left, there are two other pages :
-    - Single Review Prediction
-    - Multiple Reviews Prediction
-
-    A single review prediction requires you to enter in a review in the text box, while multiple reviews predictions will require a CSV file. 
+    - Sentiment Prediction
+    - Topic Classification
     
-    More instructions can be found in the respective pages to obtain your predictions.
+    More instructions can be found in the respective pages to obtain your results.
     """)
-    st.write("Happy predicting! :nerd_face:")
+    st.write("Happy exploring! :nerd_face:")
 
 
 # ----- DIVIDER -----

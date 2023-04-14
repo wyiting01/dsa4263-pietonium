@@ -1,27 +1,30 @@
-"""
-Script to preprocess data before we use it to train the model
-To use:
-python data/preprocess.py
-"""
-import argparse
-import re
-
 import nltk
 import pandas as pd
 from nltk.corpus import stopwords
 from nltk.stem import PorterStemmer, WordNetLemmatizer
+import re
+import ssl
+from sklearn.model_selection import train_test_split
+
+# Prevent error during nltk.download('stopwords')
+try:
+    _create_unverified_https_context = ssl._create_unverified_context
+except AttributeError:
+    pass
+else:
+    ssl._create_default_https_context = _create_unverified_https_context
 
 nltk.download('stopwords')
 
-def parse_args():
-    """Parse the command line arguments
-    """
-    parser = argparse.ArgumentParser(description='preprocess.py')
-    parser.add_argument('-i', type=str, help='input data csv file', default='data/raw/reviews.csv')
-    parser.add_argument('-o', type=str, help='output data csv file', default='data/curated/cleaned_reviews.csv')
-    args = parser.parse_args()
-    return args
+HTML_PATTERN = re.compile('<.*?>')
+STOPWORDS_LIST = set(stopwords.words('english'))
+LEMMATIZER = WordNetLemmatizer()
+STEMMER = PorterStemmer()
 
+# POS Tags to be kept (Noun, Verb, Adjective, Adverb) (n,v,a,r)
+KEPT_POSTAGS = ['JJ', 'JJR', 'JJS', 'NN', 'NNS', 'NNP', 'NNPS', 'VBZ', 'VBP', 'VBN', 'VBG','VBD', 'VB', 'RBS', 'RB', 'RBR']
+NOUN_POSTAGS = ['NN', 'NNS', 'NNP', 'NNPS']
+VERB_POSTAGS = ['VBZ', 'VBP', 'VBN', 'VBG','VBD', 'VB']
 
 def noise_entity_removal(target_input):
     """
@@ -54,7 +57,6 @@ def noise_entity_removal(target_input):
     
     return output
 
-
 def mylemmatize(word, pos):
     """Function to lemmatize input word
     :return: str
@@ -65,7 +67,6 @@ def mylemmatize(word, pos):
         return LEMMATIZER.lemmatize(word, pos = 'n')
     else:
         return word
-
 
 def text_normalization(target_input, method = 'lemmatize'):
     """Normalise documents by lemmatizing
@@ -85,7 +86,6 @@ def text_normalization(target_input, method = 'lemmatize'):
         
     return output
 
-
 def label_to_integer(sentiment_label):
     """Conversion of str labels to integer representation
         :return: int
@@ -96,29 +96,27 @@ def label_to_integer(sentiment_label):
         return 0
     else:
         return None
-
-if __name__ == '__main__':
-    args = parse_args()
-    path_to_data = args.i 
-    path_to_output = args.o
-
-    HTML_PATTERN = re.compile('<.*?>')
-    STOPWORDS_LIST = set(stopwords.words('english'))
-    LEMMATIZER = WordNetLemmatizer()
-    STEMMER = PorterStemmer()
-
-    # POS Tags to be kept (Noun, Verb, Adjective, Adverb) (n,v,a,r)
-    KEPT_POSTAGS = ['JJ', 'JJR', 'JJS', 'NN', 'NNS', 'NNP', 'NNPS', 'VBZ', 'VBP', 'VBN', 'VBG','VBD', 'VB', 'RBS', 'RB', 'RBR']
-    NOUN_POSTAGS = ['NN', 'NNS', 'NNP', 'NNPS']
-    VERB_POSTAGS = ['VBZ', 'VBP', 'VBN', 'VBG','VBD', 'VB']
-
-    df = pd.read_csv(path_to_data)
     
-    df['processed_text'] = df['Text'].apply(lambda x:noise_entity_removal(x))
+def integer_to_label(sentiment_int):
+    if sentiment_int == 1:
+        return 'positive'
+    elif sentiment_int == 0:
+        return 'negative'
+    else:
+        return None
+    
+def preprocess(dataset, text_col_name = 'Text', label_col_name = None):
+    # process the text column
+    df = dataset.copy()
+    df['processed_text'] = df[text_col_name].apply(lambda x:noise_entity_removal(x))
     df['processed_text'] = df['processed_text'].apply(lambda x:text_normalization(x))
-    df['Sentiment'] = df['Sentiment'].apply(lambda x:label_to_integer(x))
 
-    df.to_csv(path_to_output, index = False)
+    # process the label column if present and if its not in int64 type
+    if label_col_name and label_col_name in df.columns:
+        if df[label_col_name].dtypes != 'int64':
+            df[label_col_name] = df[label_col_name].apply(lambda x:label_to_integer(x))
+        
+    return df
 
-
-
+def split_train_test(features, labels):
+    return train_test_split(features, labels, test_size = 0.2, random_state=4263)
