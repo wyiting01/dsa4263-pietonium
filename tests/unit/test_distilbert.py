@@ -25,10 +25,10 @@ def test_scoring_single_review(load_model):
 
 def test_scoring_file_dummy(load_model):
     model, tokenizer = load_model
-    path = "../../data/curated/reviews/cleaned_reviews.csv"
+    path = "../../data/curated/reviews/cleaned_reviews_copy.csv"
     returned_df = scoring_file_dummy(path, model, tokenizer)
-    assert isinstance(returned_df.predicted_sentiment_probability, float)
-
+    assert isinstance(returned_df.predicted_sentiment[0], str)
+    assert isinstance(returned_df.predicted_sentiment_probability[0], float)
     
 
 
