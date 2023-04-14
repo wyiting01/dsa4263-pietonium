@@ -2,6 +2,9 @@ import streamlit as st
 import pickle
 import sys
 
+sys.path.append("../")
+from preprocess_fn import *
+
 sys.path.append("../../topic_modelling/")
 from topic_classification_modularized import *
 
@@ -10,18 +13,38 @@ st.set_page_config(page_title = 'Topic Classification',
 
 # ----- CREATE FUNCTIONS -----
 
-def get_topic(text, actual_topic = None):
-    path = ""
-    lda_model = load_lda_model(path)
-    id2word = load_id2word(path)
-    final_svc = load_final_svc(path)
-
-    if actual_topic == None:
-        pass
-
-
 def get_topics(dataframe):
-    pass
+    """
+    This function will get the topic of multiple reviews.
+    """
+
+    topic_dict = {
+        0: "Dessert",
+        1: "Snacks and Chips",
+        2: "Pet Related"
+    }
+
+    lda_path = "../../model/lda_gensim/lda_tfidf_model_FINAL.pkl"
+    id2word_path = "../../model/lda_gensim/lda_tfidf_model_FINAL.pkl.id2word"
+    final_svc_path = "../../model/topic_classification/svm_topic_classification_final.pkl"
+    lda_model = load_lda_model(lda_path)
+    id2word = load_id2word(id2word_path)
+    final_svc = load_final_svc(final_svc_path)
+
+    df_preprocessed = pd.DataFrame()
+    df_preprocessed['Text'] = dataframe['Text'].apply(lambda x: text_normalization(noise_entity_removal(x)))
+    x_corpus = preprocess_test_train(df_preprocessed, id2word)
+    x_vectors = create_vectors(x_corpus, df_preprocessed, lda_model, 3)
+    x_vec_scale = convert_vector_to_scaled_array(x_vectors)
+    topic_label = final_svc.predict(x_vec_scale)
+    topics = []
+    for label in topic_label:
+        topics.append(topic_dict.get(label))
+
+    classify_df = dataframe.copy()
+    classify_df['Topic'] = topics
+
+    return classify_df
 
 
 # ----- HEADER SECTION -----
@@ -33,91 +56,81 @@ with st.container():
 st.write("---")
 
 
-# ----- DATA INPUT -----
-# Ask for the review that user would like to predict.
-# Ask if they have an actual sentiment to compare to.
-# Predict button.
-# Parameters needed : text, actual sentiment, predicted sentiment
+# ----- START OF REVIEW SECTION -----
+# Ask if user would like to predict a single / multiple reviews.
+
+st.write("Let's start classifying your review(s)!")
+
+with st.container():
+    choice_selection = st.selectbox("Would you like to classify a **:blue[single review]** or of **:blue[multiple reviews]**?",
+                                    ["Single Review", "Multiple Reviews"])
+
+single_review, multiple_reviews = st.empty(), st.empty()
 
 
-text, actual_sentiment, predicted_sentiment = "", "", ""
+# ----- SINGLE REVIEW -----
+## If single review
+##### Ask for review
+##### Classify button
+##### Run get_topic
 
-st.write("Let's start predicting your single review!")
+if choice_selection == "Single Review":
+    with single_review.container():
+        review = st.text_input("What is your review?")
 
-# Text box to accept review input
-text = st.text_input("Please enter in your review")
+        # Only when a review is given then this part is shown
+        if review != "":
+            review_df = pd.DataFrame([review], columns = ['Text'])
+            if st.button("Classify Now"):
+                st.write("Classification starting now!")
 
-col1, _ = st.columns(2)
+                st.write("---")
+                st.write("Classification is now running, please wait patiently. :bow:")
+                classified_df = get_topics(review_df)
+                classified_topic = classified_df['Topic'].values[0]
+                st.write("Classification finished!")
 
-with col1:
-    # Option for user to choose if they have an actual sentiment to compare to
-    sentiment_comparison = st.selectbox(
-        "Do you know the actual sentiment of the review?",
-        ["No", "Yes"]
-    )
+                st.write("---")
+                st.write(f"The topic of your reviews is : **:blue[{classified_topic}]**")
 
-    # If option is "Yes", choose the correct sentiment
-    if sentiment_comparison == "Yes":
-        actual_sentiment = st.selectbox(
-            "Please choose the sentiment of your review",
-            ["Positive", "Negative"]
-        )
 
-# ----- PREDICTION -----
+# ----- MULTIPLE REVIEWS -----
+## If multiple
+##### Ask for file
+##### Ask if there is an actual sentiment column
+##### Predict button
+##### Run get_sentiments
+##### Plot confusion matrix
 
-# Only show predict button if text box is not empty
-if text != "":
-    if st.button("Predict Now"):
-        st.write("Prediction starting now!")
+if choice_selection == "Multiple Reviews":
+    with multiple_reviews.container():
+        # widget to accept uploaded file
+        uploaded_file = st.file_uploader("Please upload a CSV file", type = "csv")
 
-        # Divider
-        st.write("---")
+        if uploaded_file is not None:
+            dataframe = pd.read_csv(uploaded_file)
+            st.write("File successfully uploaded!")
+            st.write(dataframe.head(5))
 
-        # Process text and change sentiment to integer
-        st.write("Processing of review occurring...")
-        processed_text = text_normalization(noise_entity_removal(text))
-        processed_actual_sentiment = actual_sentiment
-        processed_actual_sentiment = label_to_integer(processed_actual_sentiment.lower())
-        st.write("Review successfully processed!")
+            if st.button("Classify Now"):
+                st.write("Classification starting now!")
 
-        # SVM tfidf and model 
-        models_meta = {
-            "saved_tfidf": "../saved_models/uy_svm1_vectorizer.pkl",
-            "saved_model": "../saved_models/uy_svm1.pkl"
-            }
-        
-        st.write("Loading model for prediction...")
-        vectorizer = pickle.load(open(models_meta["saved_tfidf"], "rb")) # load saved tfidf vectorizer
-        test_x = vectorizer.transform([processed_text])
-        saved_model = pickle.load(open(models_meta["saved_model"], "rb")) # load saved model
+                st.write("---")
+                st.write("Classification is now running, please wait patiently. :bow:")
+                classified_df = get_topics(dataframe)
+                st.write("Classification finished!")
 
-        # Predict the sentiment
-        st.write("Prediction in progress...")
-        predicted_sentiment = saved_model.predict(test_x)
-        st.write("Prediction done!")
+                st.write("---")
+                st.write("Here's a sneak peek of your first 5 review's topic! :eyes:")
+                st.write(classified_df.head())
 
-        # Divider
-        st.write("---")
+                # Download button
+                classified_csv = classified_df.to_csv().encode('utf-8')
 
-        # Print prediction
-        if predicted_sentiment == 1:
-            predicted_sentiment = 'Positive'
-            st.markdown(f"Predicted Sentiment: **:green[Positive]**")
-        else:
-            predicted_sentiment = 'Negative'
-            st.markdown(f"Predicted Sentiment: **:red[Negative]**")
-
-        # Divider
-        st.write("---")
-
-        # Check if there was a given sentiment
-        if actual_sentiment != "":
-
-            # Check if predicted == actual
-            if predicted_sentiment == actual_sentiment:
-                st.write("Our prediction matches the sentiment you have given! :tada:")
-            else:
-                st.write("We are sorry that the prediction does not match the sentiment you have given... :cry:")
+                st.download_button(
+                    label = "Download the classified topics",
+                    data = classified_csv,
+                    file_name = "Classified_Topics_of_Review.csv")
 
 
 # ----- HIDING WATERMARK -----
