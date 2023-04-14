@@ -152,21 +152,34 @@ def create_vectors(corpuss, data, lda_model, k):
         vecs_lst.append(topic_vec)
     return (vecs_lst)
 
-def convert_vector_to_scaled_array(train_vecs, y_train, test_vecs, y_test):
+def convert_vector_to_scaled_array(x, y = None):
     """
     For x data: Convert vectors to numpy array and scale
     For y data: Convert to numpy array
     """
-    x_train = np.array(train_vecs)
-    y_train = np.array(y_train)
-    x_test = np.array(test_vecs)
-    y_test = np.array(y_test)
-
     scaler = StandardScaler()
-    x_train_scale = scaler.fit_transform(x_train)
-    x_test_scale = scaler.fit_transform(x_test)
 
-    return (x_train_scale, y_train, x_test_scale, y_test)
+    x_arr = np.array(x)
+    x_arr_scale = scaler.fit_transform(x_arr)
+
+    if y != None:
+        y_arr = np.array(y)
+        y_arr_scale = scaler.fit_transform(y_arr)
+        return (x_arr_scale, y_arr_scale)
+    
+    else:
+        return x_arr_scale
+    
+    # x_train = np.array(train_vecs)
+    # y_train = np.array(y_train)
+    # x_test = np.array(test_vecs)
+    # y_test = np.array(y_test)
+
+    # scaler = StandardScaler()
+    # x_train_scale = scaler.fit_transform(x_train)
+    # x_test_scale = scaler.fit_transform(x_test)
+
+    # return (x_train_scale, y_train, x_test_scale, y_test)
 
 def tune_hyperparameter(x_train, y_train):
     """
@@ -178,7 +191,7 @@ def tune_hyperparameter(x_train, y_train):
     print(grid_result.best_params_)
    
 
-def predict_and_evaluate_model(chosen_model, x_test_scale, y_test):
+def predict_and_evaluate_model(chosen_model, x_test_scale, y_test = None):
     """
     1. Predict test y label
     2. Produce Classification report 
@@ -186,11 +199,14 @@ def predict_and_evaluate_model(chosen_model, x_test_scale, y_test):
     """
     y_predicted_algo = chosen_model.predict(x_test_scale)
 
-    report = classification_report(y_test, y_predicted_algo, output_dict=True,  zero_division=0)
-    classfication_df = pd.DataFrame(report).transpose()
-    cm = confusion_matrix(y_test, y_predicted_algo)
-    confusion_matrix_df = pd.DataFrame(cm)
-    return (classfication_df, confusion_matrix_df)
+    if y_test != None:
+        report = classification_report(y_test, y_predicted_algo, output_dict=True,  zero_division=0)
+        classfication_df = pd.DataFrame(report).transpose()
+        cm = confusion_matrix(y_test, y_predicted_algo)
+        confusion_matrix_df = pd.DataFrame(cm)
+        return (classfication_df, confusion_matrix_df)
+    else:
+        return y_predicted_algo
 
 def baseline_svc(x_train_scale, y_train):
     svm_tfidf = SVC(random_state= 1, C = 10, gamma = 10, kernel='sigmoid', decision_function_shape='ovo').fit(x_train_scale, y_train)
