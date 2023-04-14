@@ -14,5 +14,6 @@
           └── xgboost_model.py
 ```
 
+<h2>File/Folder Descriptions</h2>
 1. Deep Learning - consists of jupyter notebook, python module and requirements needed to train and deploy DistilBert model
 2. ML - consists of jupyter notebooks and python scripts needed to train traditional learning algo (SVM and XGBoost) which acts as baseline models
