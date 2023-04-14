@@ -7,20 +7,24 @@ from sklearn import svm
 from sklearn.metrics import classification_report, confusion_matrix, ConfusionMatrixDisplay
 from sklearn.model_selection import KFold, cross_val_score
 
+# instantiate a tfidf vectorizer and output a fitted tfidf
 def svm_instantiate_tfidf_vectorizer(x_train):
     vectorizer = TfidfVectorizer(max_df=0.8, sublinear_tf=True)
     vectorizer.fit(x_train)
     return vectorizer
 
+# instantiate svm and ouput a fitted svm
 def svm_instantiate_svm_model(x_train, y_train, set_random_state = 1):
     svm_model = svm.SVC(kernel = 'linear', probability = True, random_state = set_random_state)
     svm_model.fit(x_train, y_train)
     return svm_model
 
+# obtain classification report from the predicted labels and the actual labels
 def svm_get_classification_report(actual, predicted):
     report = classification_report(actual, predicted, output_dict=True)
     return report
 
+# print out the classification report in a nice way
 def svm_print_classifcation_rerport(report):
     print('Positive:')
     print('---------')
@@ -36,6 +40,7 @@ def svm_print_classifcation_rerport(report):
     print('--------')
     print(f"accuracy: {round(report['accuracy'], 3)}")
 
+# obtain the confusion matrix plot
 def svm_get_confusion_matrix(actual, predicted):
     cm = confusion_matrix(actual, predicted)
     cm_display = ConfusionMatrixDisplay(confusion_matrix = cm, display_labels = ['negative', 'positive'])
