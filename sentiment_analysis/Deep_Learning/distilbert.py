@@ -214,7 +214,7 @@ def scoring_file_thread_df(df, model, tokenizer):
 # For App and Presentation
 def scoring_file_dummy(filename, model, tokenizer):
     """
-    Read the filename and return the pd.DataFrame of columns []'Time', 'Text', 'predicted_sentiment', 'predicted_sentiment_probability']
+    Read the filename and return the pd.DataFrame of columns ['Time', 'Text', 'predicted_sentiment', 'predicted_sentiment_probability']
 
     """
     try:
@@ -246,7 +246,7 @@ def scoring_file_dummy(filename, model, tokenizer):
 # For App and Presentation
 def scoring_file_dummy_df(df, model, tokenizer):
     """
-    Read the dataframe (pd.DataFrame) and return the pd.DataFrame of columns []'Time', 'Text', 'predicted_sentiment', 'predicted_sentiment_probability']
+    Read the dataframe (pd.DataFrame) and return the pd.DataFrame of columns ['Time', 'Text', 'predicted_sentiment', 'predicted_sentiment_probability']
 
     """
     try:
@@ -346,5 +346,44 @@ def predict(input, model, tokenizer):
         import traceback
         exc = traceback.format_exc()
         logging.error('Error from function predict()')
+        error_message = str(exc.replace("\n", ""))
+        return error_message
+    
+## FOR PRESENTATION
+def scoring_file_to_csv(filename, model, tokenizer, output_filename, savedir='./'):
+    """
+    Read the filename and return the pd.DataFrame of columns ['Time', 'Text', 'predicted_sentiment', 'predicted_sentiment_probability']
+    At the same time write output to csv file named `output_filename`
+
+    :param filename: format X.csv
+    :type filename: str
+    :param output_filename: format X.csv (different from filename)
+    :type output_filename: str
+    """
+    try:
+        df = pd.read_csv(filename)
+        df = df.loc[~df['Text'].isna()]
+        df['processed_text'] = df['Text'].apply(lambda x: noise_remove_helper(x))
+
+        predicted_labels = []
+        predicted_label_probs = []
+        with torch.no_grad():
+            for text in df['processed_text']:
+                inputs = tokenizer(text, return_tensors="pt", truncation=True)
+                logits = model(**inputs).logits
+                predicted_class_id = logits.argmax().item()
+                predicted_class_prob = round(F.softmax(logits, dim=1).flatten()[predicted_class_id].item(), 3)
+                predicted_labels.append(predicted_class_id)
+                predicted_label_probs.append(predicted_class_prob)
+        df['predicted_sentiment'] = pd.Series(predicted_labels)
+        df['predicted_sentiment'] = df['predicted_sentiment'].apply(lambda x: id_2_label(model,x))
+        df['predicted_sentiment_probability'] = pd.Series(predicted_label_probs)
+        final_df = df[['Time', 'Text', 'predicted_sentiment', 'predicted_sentiment_probability']]
+        final_df.to_csv(f"{output_filename}", index=False)
+        return final_df
+    except Exception as e:
+        import traceback
+        exc = traceback.format_exc()
+        logging.error('Error from function scoring_file_dummy')
         error_message = str(exc.replace("\n", ""))
         return error_message
