@@ -1,6 +1,6 @@
 <h1>dsa4263-pietonium</h1>
 
-<h2>Folder Structure</h2>
+<h2>Repository Structure</h2>
 
   1. **sentiment_analysis**
     
