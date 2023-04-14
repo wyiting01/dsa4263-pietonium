@@ -90,10 +90,12 @@ def save_result(path, y_test_algo, y_predicted_algo):
     # convert from matrix to dataframe
     confusion_matrix_df = pd.DataFrame(cm)
     # save both confusion matrix and classification report into one csv file
+    """
     with open(path,'a') as f:
         for df in [classfication_df, confusion_matrix_df]:
             df.to_csv(f)
             f.write("\n")
+    """
     return (classfication_df, confusion_matrix_df)
 
 # convert corpus to vector in order to feed it into sklearn models
@@ -150,7 +152,7 @@ if __name__ == '__main__':
     # create directory to keep results
     os.makedirs('result/', exist_ok=True)
     os.makedirs('../model/topic_classification/', exist_ok=True)
-    
+
     # SVM
     svm_tfidf = SVC(random_state= 1, C = 10, gamma = 10, kernel='sigmoid', decision_function_shape='ovo').fit(x_train_scale, y_train)
     # save model
@@ -162,17 +164,17 @@ if __name__ == '__main__':
     print(classification_df)
     print(confusion_matrix_df)
     # Accuracy:0.916437098
-    
+
     # Hypertuning
     param_grid = {'C': [0.1,1, 10, 100], 'gamma': [1,0.1,0.01,0.001],'kernel': ['rbf', 'poly', 'sigmoid']}
     grid = GridSearchCV(SVC(),param_grid,refit=True,verbose=2)
     grid_result = grid.fit(x_train_scale,y_train)
     print(grid_result.best_params_)
-    
+
     # Final SVC model
     svm_tfidf_final = SVC(random_state= 1, C = 10, gamma = 1, kernel='rbf', decision_function_shape='ovo').fit(x_train_scale, y_train)
     # save model
-    pickle.dump(svm_tfidf, open('../model/topic_classification/svm_topic_classification_final.pkl', 'wb'))
+    pickle.dump(svm_tfidf_final, open('../model/topic_classification/svm_topic_classification_final.pkl', 'wb'))
     # predict test topic
     svm_y_predict_final = svm_tfidf_final.predict(x_test_scale) 
     # save classification report and confusion matrix in csv
@@ -180,7 +182,30 @@ if __name__ == '__main__':
     print(classification_df)
     print(confusion_matrix_df)
     # Accuracy: 0.977961433
- 
+
+    # FOR DEPLOYMENT PURPOSES
+    train = processed_data
+    y_train = processed_data['Dominant_Topic']
+    train_data = train.Text.values.tolist()
+    x_train_corpus = preprocess(train_data, dictionary)
+    train_vecs = create_vectors(x_train_corpus, train, lda_tfidf_model, 3)
+    # convert to numpy array 
+    x_train = np.array(train_vecs)
+    y_train = np.array(y_train)
+
+    # Scale Data
+    scaler = StandardScaler()
+    x_train_scale = scaler.fit_transform(x_train)
+
+    param_grid = {'C': [0.1,1, 10, 100], 'gamma': [1,0.1,0.01,0.001],'kernel': ['rbf', 'poly', 'sigmoid']}
+    grid = GridSearchCV(SVC(random_state=1),param_grid,refit=True,verbose=2)
+    grid_result = grid.fit(x_train_scale,y_train)
+    print(grid_result.best_params_)
+   
+    svm_tfidf_final = SVC(random_state= 1, C = 100, gamma = 1, kernel='rbf', decision_function_shape='ovo').fit(x_train_scale, y_train)
+    # save model
+    pickle.dump(svm_tfidf_final, open('../model/topic_classification/svm_topic_classification_deployment.pkl', 'wb'))
+    
 
     
    
