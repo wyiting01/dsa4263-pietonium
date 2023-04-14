@@ -3,7 +3,7 @@ import pandas as pd
 import pickle
 import sys
 
-sys.path.append("../../sentiment_analysis/Deep_Learning/")
+sys.path.append("../")
 from distilbert import *
 
 from sklearn.metrics import precision_score, recall_score, accuracy_score, confusion_matrix, ConfusionMatrixDisplay
