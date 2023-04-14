@@ -1,6 +1,6 @@
 import pytest
 
-from sentiment_analysis.Deep_Learning.distilbert import scoring_single_review, load_distilbert_model
+from sentiment_analysis.Deep_Learning.distilbert import scoring_single_review, load_distilbert_model, scoring_file_dummy
 
 @pytest.fixture
 def load_model():
@@ -21,6 +21,14 @@ def test_scoring_single_review(load_model):
 
     assert raw_review1_pred[0] == 1
     assert raw_review2_pred[0] == 0
+
+
+def test_scoring_file_dummy(load_model):
+    model, tokenizer = load_model
+    path = "../../data/curated/reviews/cleaned_reviews.csv"
+    returned_df = scoring_file_dummy(path, model, tokenizer)
+    assert isinstance(returned_df.predicted_sentiment_probability, float)
+
     
 
 
