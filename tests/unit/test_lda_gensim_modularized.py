@@ -22,6 +22,9 @@ def test_combine_reviews_to_list(load_data):
 
 
 def test_remove_top_10_words(load_data):
+    """
+    Function to check that top 10 words are removed from the texts
+    """
     data = combine_reviews_to_list(load_data)
     data_words_before_removal = split_sentence(data)
     
