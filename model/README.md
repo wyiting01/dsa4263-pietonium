@@ -14,5 +14,5 @@
 ```
 
 <h2>File/Folder Descriptions</h2>
-1. lda_gensim folder - consists of saved baseline and final LDA models from topic modelling using LDA(Gensim)
+1. lda_gensim folder - consists of saved baseline and final LDA models from topic modelling using LDA(Gensim) <br>
 2. topic_classification - consists of saved baseline and final SVC models from topic classification part
