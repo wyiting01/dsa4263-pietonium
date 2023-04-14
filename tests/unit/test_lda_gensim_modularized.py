@@ -39,3 +39,18 @@ def test_remove_top_10_words(load_data):
     assert len(data_words_before_removal[second_index]) >= len(data_words_after_removal[second_index])
 
 
+def test_create_vectors(load_data):
+    data = combine_reviews_to_list(load_data)
+    
+    data_words, id2word, bow_corpus = obtain_corpus(data)
+    corpus_tfidf = get_tfidf_corpus(bow_corpus)
+    final_num_topics, final_score, coherence_score_topic = get_coherence_values_and_optimal_topic_num(corpus_tfidf,10, id2word, data_words)
+    lda_final_model = load_final_lda_model(id2word, corpus_tfidf, final_num_topics)
+
+    topic_review_df = dominant_topic_per_review(lda_final_model, corpus_tfidf, data)
+
+    train, test = split_test_train(topic_review_df)
+    x_train_corpus = preprocess_test_train(train, id2word)
+
+    train_vecs = create_vectors(x_train_corpus, train, lda_final_model, final_num_topics)
+    assert len(train_vecs) == len(train)
