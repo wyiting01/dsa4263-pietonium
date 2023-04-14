@@ -5,7 +5,7 @@ import sys
 sys.path.append("../")
 from preprocess_fn import *
 
-sys.path.append("../../topic_modelling/")
+sys.path.append("../")
 from topic_classification_modularized import *
 
 st.set_page_config(page_title = 'Topic Classification', 
