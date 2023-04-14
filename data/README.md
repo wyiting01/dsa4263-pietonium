@@ -10,6 +10,7 @@
 ├── preprocess_fn.py 
 ```
 
+<h2>File/Folder Descriptions</h2>
 1. curated/reviews - contains csv file which has undergone preprocessing
 2. raw - contains unprocessed csv file
 3. Data Preprocessing - jupyter notebook that was used to run preprocessing functions on raw reviews
