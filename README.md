@@ -2,25 +2,73 @@
 
 <h2>Repository Structure</h2>
 
-  1. **sentiment_analysis**
+```
+├── archive # containing unused files and models for reference, not included in training or inferencing pipeline
+
+├── data
+    └── curated/reviews
+        └── cleaned_reviews.csv # reviews that have undergone preprocessing
+    └── raw
+        └── reviews.csv # raw review file
+    └── Data Preprocessing.ipynb # jupyter notebook used for preprocessing
+    └── Dataset EDA.ipynb # jupyter notebook for EDA on reviews' trend etc.
+    └── preprocess_fn.py # python module with preprocess functions
     
-    1.1 Deep_Learning: fine-tuning experiments of BERT models (files: .py, .ipynb, .txt)
+ ├── deployment # streamlit app
+    └── streamlit_app
+    └── comparison.py
+    └── distilbert.py
+    └── evaluate.py
+    └── kl_topic_classification.py
+    └── preprocess_fn.py
+    └── topic_classification_modularized.py
     
-    1.2 ML: training experiments of traditional machine learning algorithm, including SVM and XGBoost (files: .py, .ipynb)
-    
-  2. **topic_modelling**: topic modelling and topic classification experiments
-  
-  3. **model**: containing model binary files of SVM, XGBoost, LDA, Gensim (except BERT)
-  
-  4. **data**: raw data and curated data for modelling, with data-preprocessing scripts (files: .csv, .ipynb, .py)
-  
-  5. **tests**: unit testing experiments
-  
-  6. **deployment**: streamlit app for scoring api
-  
-  7. **service (optional)**: dockerized streamlit app
-  
-  8. **archived**: containing unused files and models for reference, not included in training or inferencing pipeline
+ ├── model # containing model binary files of SVM, XGBoost, LDA, Gensim (except BERT)
+      └── lda_gensim
+      └── topic_classification
+      └── svm.pkl
+      └── svm_vectorizer.pkl
+      └── uy_svm1.pkl
+      └── uy_svm1_vectorizer.pkl
+      └── uyen_svm.pkl
+      └── uyen_svm_vectorizer.pkl
+      └── xgboost.pkl
+      └── xgboost_vectorizer.pkl
+ 
+ ├── sentiment_analysis
+      └── Deep Learning # fine-tuning experiments of BERT models (files: .py, .ipynb, .txt)
+          └── Assess_Performance.ipynb
+          └── DistilBERT1_requirements.txt
+          └── distilbert.py # python module with distilBert functions for prediction and app deployment
+          └── distilbert_train.ipynb
+          └── distilbert_train_modules.py # python module with distilBert function for training
+      └── ML # training experiments of traditional machine learning algorithm, including SVM and XGBoost (files: .py, .ipynb)
+          └── Baseline Model - SVM.ipynb
+          └── Baseline Model - XGBoost.ipynb
+          └── svm_model.py
+          └── xgboost_model.py
+          
+  ├── service # dockerized streamlit app
+      └── requirements.txt
+     
+  ├── test # unit testing experiments
+      └── unit
+          └── __init__.py
+          └── test_distilbert.py
+          └── test_lda_gensim_modularized.py
+      └── __init__.py
+      
+ ├── topic_modelling 
+      └── result # contains graphs plot for topic modelling
+      └── combine_modularized.py
+      └── lda_gensim_modularized.py
+      └── lda_gensim_tfidf.py
+      └── lda_sklearn.py
+      └── presentation_topic_modelling_and_classification.ipynb
+      └── requirement.txt
+      └── topic_classification_final.py
+      └── topic_classification_modularized.py    
+```
 
 <h2>Notes</h2>
   
