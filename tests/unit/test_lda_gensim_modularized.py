@@ -1,7 +1,7 @@
 import pytest
 import random
 
-from topic_modelling.lda_gensim_modularized import *
+from topic_modelling.combine_modularized import *
 
 @pytest.fixture
 def load_data():
