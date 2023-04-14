@@ -153,7 +153,8 @@ def get_coherence_values_and_optimal_topic_num(type_corpus, n, id2word, data_wor
                                                 num_topics=i, 
                                                 random_state=100,
                                                 chunksize=100,
-                                                passes=10)
+                                                passes=10,
+                                                workers=4)
         # instantiate topic coherence model
         cm = CoherenceModel(model=lda_model, texts= data_words, dictionary=id2word, coherence='c_v')
         # Append number of topics modeled
