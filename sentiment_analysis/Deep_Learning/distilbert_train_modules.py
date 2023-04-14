@@ -10,7 +10,7 @@ import pandas as pd
 import re
 import logging
 
-from distilbert import label_to_integer_helper, noise_remove_helper
+from .distilbert import label_to_integer_helper, noise_remove_helper
 
 # HELPER FUNCTIONS 
 CONFIG = {
