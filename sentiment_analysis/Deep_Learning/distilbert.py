@@ -142,7 +142,7 @@ def id_2_label(model, id):
     """
     Return the text label Negative / Positive from predicted labels 0 / 1
     """
-    return model.config.id2label(id)
+    return model.config.id2label[id]
 
 def prepare_inference_data(filename):
     """
@@ -177,7 +177,7 @@ def scoring_file_thread(filename, model, tokenizer):
             future_result_list = [executor.submit(scoring_single_review, review, model, tokenizer) for review in reviews]
         result_list = [x.result() for x in concurrent.futures.as_completed(future_result_list)]
         final_df = pd.concat([df[['Time', 'Text']], pd.DataFrame(data=result_list, columns=['predicted_sentiment', 'predicted_sentiment_probability'])], axis=1)
-        final_df['predicted_sentiment'] = final_df['predicted_sentiment'].apply(lambda x: id_2_label(x))
+        final_df['predicted_sentiment'] = final_df['predicted_sentiment'].apply(lambda x: id_2_label(model,x))
         return final_df
     
     except Exception as e:
@@ -200,15 +200,16 @@ def scoring_file_thread_df(df, model, tokenizer):
             future_result_list = [executor.submit(scoring_single_review, review, model, tokenizer) for review in reviews]
         result_list = [x.result() for x in concurrent.futures.as_completed(future_result_list)]
         final_df = pd.concat([df[['Time', 'Text']], pd.DataFrame(data=result_list, columns=['predicted_sentiment', 'predicted_sentiment_probability'])], axis=1)
-        final_df['predicted_sentiment'] = final_df['predicted_sentiment'].apply(lambda x: id_2_label(x))
+        final_df['predicted_sentiment'] = final_df['predicted_sentiment'].apply(lambda x: id_2_label(model,x))
         return final_df
     
     except Exception as e:
         import traceback
         exc = traceback.format_exc()
-        logging.error('Error from function scoring_file_thread')
+        logging.error('Error from function scoring_file_thread_df')
         error_message = str(exc.replace("\n", ""))
         return error_message
+
 
 # For App and Presentation
 def scoring_file_dummy(filename, model, tokenizer):
@@ -232,7 +233,7 @@ def scoring_file_dummy(filename, model, tokenizer):
                 predicted_labels.append(predicted_class_id)
                 predicted_label_probs.append(predicted_class_prob)
         df['predicted_sentiment'] = pd.Series(predicted_labels)
-        df['predicted_sentiment'] = df['predicted_sentiment'].apply(lambda x: id_2_label(x))
+        df['predicted_sentiment'] = df['predicted_sentiment'].apply(lambda x: id_2_label(model,x))
         df['predicted_sentiment_probability'] = pd.Series(predicted_label_probs)
         return df[['Time', 'Text', 'predicted_sentiment', 'predicted_sentiment_probability']]
     except Exception as e:
@@ -263,16 +264,15 @@ def scoring_file_dummy_df(df, model, tokenizer):
                 predicted_labels.append(predicted_class_id)
                 predicted_label_probs.append(predicted_class_prob)
         df['predicted_sentiment'] = pd.Series(predicted_labels)
-        df['predicted_sentiment'] = df['predicted_sentiment'].apply(lambda x: id_2_label(x))
+        df['predicted_sentiment'] = df['predicted_sentiment'].apply(lambda x: id_2_label(model,x))
         df['predicted_sentiment_probability'] = pd.Series(predicted_label_probs)
         return df[['Time', 'Text', 'predicted_sentiment', 'predicted_sentiment_probability']]
     except Exception as e:
         import traceback
         exc = traceback.format_exc()
-        logging.error('Error from function scoring_file_dummy')
+        logging.error('Error from function scoring_file_dummy_df')
         error_message = str(exc.replace("\n", ""))
         return error_message
-
 
 
 # For evaluate.py (and App if Sentiment(label) is provided)
