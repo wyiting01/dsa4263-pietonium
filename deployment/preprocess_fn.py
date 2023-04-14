@@ -5,6 +5,7 @@ from nltk.stem import PorterStemmer, WordNetLemmatizer
 import re
 import ssl
 from sklearn.model_selection import train_test_split
+import matplotlib.pyplot as plt
 
 # Prevent error during nltk.download('stopwords')
 try:
