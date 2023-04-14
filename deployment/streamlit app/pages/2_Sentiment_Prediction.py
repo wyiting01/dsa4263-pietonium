@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 
 def get_sentiments(dataframe):
     model, tokenizer = load_distilbert_model()
-    predicted_df = scoring_file_thread_df(dataframe, model, tokenizer)
+    predicted_df = scoring_file_dummy_df(dataframe, model, tokenizer)
     return predicted_df
 
 def get_sentiment(text):
@@ -44,7 +44,7 @@ st.set_page_config(page_title = 'Sentiment Prediction',
 with st.container():
     st.subheader("Sentiment Prediction")
     st.write("Please take note that for predictions on multiple reviews, only **:blue[CSV]** files are accepted.")
-    st.write("Additionally, the file schema must be **:blue[| Text | Time |]** for the app to run.")
+    st.write("Additionally, the file must have columns **:blue[| Text | Time |]** for the app to run.")
 
 
 # ----- PAGE DIVIDER -----
@@ -73,20 +73,27 @@ single_review, multiple_reviews = st.empty(), st.empty()
 ##### Check if predicted sentiment is the same as given sentiment
 
 if choice_selection == "Single Review":
-    review, actual_sentiment = "", ""
+    review, actual_sentiment, known_sentiment = "", "", ""
 
     with single_review.container():
         review = st.text_input("What is your review?")
 
-        known_sentiment = st.selectbox("Do you know the actual sentiment of the Review?",
-                                       ["No", "Yes"])
+        # Only when a review is given then this part is shown
+        if review != "":
+            known_sentiment = st.selectbox("Do you know the actual sentiment of the Review?",
+                                        ["No", "Yes"])
+
+        else:
+            pass
         
+        # Only when there is a known sentiment then this part is shown
         if known_sentiment == "Yes":
             actual_sentiment = st.selectbox("What is the actual sentiment?",
                                             ["Positive", "Negative"])
         else:
             pass
-
+        
+        # Only when a review is given then predict button will show
         if review != "":
             if st.button("Predict Now"):
                 st.write("Prediction starting now!")
@@ -107,9 +114,9 @@ if choice_selection == "Single Review":
                     actual_label = label_to_integer_helper(actual_sentiment)
 
                     if actual_label == pred_sentiment:
-                        st.write("Our prediction matches your sentiment! :tada:")
+                        st.write("Our prediction matches your given sentiment! :tada:")
                     else:
-                        st.write("Our prediction did not match you sentiment. Sorry... :cry:")
+                        st.write("Our prediction did not match your given sentiment. Sorry... :cry:")
 
                 else:
                     pass
@@ -139,6 +146,7 @@ if choice_selection == "Multiple Reviews":
         if known_sentiment == "Yes":
             sentiment_col = st.text_input("What is the name of that column? Please input in the exact name and press **enter** to check its validity.")
 
+            # When sentiment column is given, check if it is in the dataframe
             if sentiment_col != "":
                 if sentiment_col in dataframe.columns:
                     st.write(":white_check_mark: :green[That is a valid column!]")
@@ -147,87 +155,50 @@ if choice_selection == "Multiple Reviews":
                     st.write(":x: :red[That is not a valid column, please try again!]")
 
 
+        # Only when a file is uploaded then the predict button is shown
         if uploaded_file is not None:    
             if st.button("Predict Now"):
                 st.write("Prediction starting now!")
 
                 st.write("---")
-                st.write("Prediction is now running, please wait patiently. Thank you!")
-                pred_df = get_sentiments(dataframe.head(10))
+                st.write("Prediction is now running, please wait patiently. :bow:")
+                sample_df = pd.DataFrame(dataframe.head(500)) # Only to run on first 500 reviews due to computer limit
+                pred_df = get_sentiments(sample_df) 
                 st.write("Prediction finished! Thank you for waiting so patiently!")
 
                 st.write("---")
-                st.write(pred_df)      
-    
+                st.write("Here's a sneak peek of your first 5 reviews' predicted sentiments. :eyes:")
+                st.write(pred_df.head())
 
+                # Only when there is known sentiment then show metrics
+                if known_sentiment == "Yes":
+                    st.write("---")
+                    st.subheader("Here are some evaluation metrics to see how accurate our predictions are!")
+                    actual_labels = sample_df[sentiment_col]
+                    pred_labels = pred_df['predicted_sentiment']
 
-    
-#     # If there is sentiment to compare to...
-#     if sentiment_comparison == "Yes":
+                    # Convert labels to integer
+                    actual_labels = actual_labels.apply(lambda x: label_to_integer_helper(x))
+                    pred_labels = pred_labels.apply(lambda x: label_to_integer_helper(x))
 
-#         st.subheader("Here are some metrics when comparing our predictions to the actual sentiments...")
+                    accuracy = accuracy_score(actual_labels, pred_labels)
+                    precision = precision_score(actual_labels, pred_labels)
+                    recall = recall_score(actual_labels, pred_labels)
+                    st.write("Accuracy: ", accuracy.round(2))
+                    st.write("Precision: ", precision.round(2))
+                    st.write("Recall: ", recall.round(2))
+                    plot_cm(pred_labels, actual_labels)
 
-#         # Process the original sentiments
-#         preprocessed_labels = preprocessed_df[ACTUAL_SENTIMENT_COL].values.tolist() 
+                else:
+                    pass
 
-#         # Output the accuracy, precision and recall score
-#         accuracy = accuracy_score(preprocessed_labels, predicted_y)
-#         precision = precision_score(preprocessed_labels, predicted_y)
-#         recall = recall_score(preprocessed_labels, predicted_y)
-#         st.write("Accuracy: ", accuracy.round(2))
-#         st.write("Precision: ", precision.round(2))
-#         st.write("Recall: ", recall.round(2))
+                # Download button
+                predicted_csv = pred_df.to_csv().encode('utf-8')
 
-#         # Plot confusion matrix
-#         st.subheader("Confusion Matrix")
-#         cm_2d = confusion_matrix(preprocessed_labels, predicted_y)
-#         fig, ax = plt.subplots(figsize=(2, 2))
-#         ax.matshow(cm_2d, cmap=plt.cm.Greens, alpha = 0.3)
-#         for i in range(cm_2d.shape[0]):
-#             for j in range(cm_2d.shape[1]):
-#                 ax.text(x = j, y = i, s = cm_2d[i, j], va = 'center', ha = 'center')
-
-#         plt.xticks([0, 1], ['Negative', 'Positive'])
-#         plt.yticks([0, 1], ['Negative', 'Positive'])
-#         plt.xlabel('Predictions', fontsize=10)
-#         plt.ylabel('Actuals', fontsize=10)
-#         st.pyplot(fig)
-
-#         # Create a new dataframe to output
-#         predicted_data = {
-#             TEXT_COL: dataframe[TEXT_COL].values.tolist(),
-#             "Original Sentiments": dataframe[ACTUAL_SENTIMENT_COL].values.tolist(),
-#             "Predicted Sentiments": predicted_y_str
-#         }
-
-#         predicted_df = pd.DataFrame(predicted_data)
-#         st.write(predicted_df.head())
-
-#         # Download button
-#         predicted_csv = predicted_df.to_csv().encode('utf-8')
-
-#         st.download_button(
-#             label = "Download the predicted sentiments",
-#             data = predicted_csv,
-#             file_name = "Predicted_Sentiments_of_Review.csv",
-#             mime = "text/csv")
-    
-#     else: # No comparison to be done
-#         predicted_data = {
-#             TEXT_COL: dataframe[TEXT_COL].values.tolist(),
-#             "Predicted Sentiments": predicted_y_str
-#         }
-
-#         predicted_df = pd.DataFrame(predicted_data)
-#         st.write(predicted_df.head())
-
-#         # Download button
-#         predicted_csv = predicted_df.to_csv().encode('utf-8')
-
-#         st.download_button(
-#             label = "Download the predicted sentiments",
-#             data = predicted_csv,
-#             file_name = "Predicted_Sentiments_of_Review.csv")
+                st.download_button(
+                    label = "Download the predicted sentiments",
+                    data = predicted_csv,
+                    file_name = "Predicted_Sentiments_of_Review.csv")
 
 
 # ----- HIDING WATERMARK -----
