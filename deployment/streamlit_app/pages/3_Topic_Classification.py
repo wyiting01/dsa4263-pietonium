@@ -26,7 +26,7 @@ def get_topics(dataframe):
 
     lda_path = "../../model/lda_gensim/lda_tfidf_model_FINAL.pkl"
     id2word_path = "../../model/lda_gensim/lda_tfidf_model_FINAL.pkl.id2word"
-    final_svc_path = "../../model/topic_classification/svm_topic_classification_final.pkl"
+    final_svc_path = "../../model/topic_classification/svm_topic_classification_deployment.pkl"
     lda_model = load_lda_model(lda_path)
     id2word = load_id2word(id2word_path)
     final_svc = load_final_svc(final_svc_path)
