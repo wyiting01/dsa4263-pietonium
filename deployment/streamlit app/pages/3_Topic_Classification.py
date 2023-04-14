@@ -10,8 +10,15 @@ st.set_page_config(page_title = 'Topic Classification',
 
 # ----- CREATE FUNCTIONS -----
 
-def get_topic(text):
-    pass
+def get_topic(text, actual_topic = None):
+    path = ""
+    lda_model = load_lda_model(path)
+    id2word = load_id2word(path)
+    final_svc = load_final_svc(path)
+
+    if actual_topic == None:
+        pass
+
 
 def get_topics(dataframe):
     pass
