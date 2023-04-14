@@ -186,7 +186,7 @@ def tune_hyperparameter(x_train, y_train):
     Obtain the optimal C, gamma number and kernel
     """
     param_grid = {'C': [0.1,1, 10, 100], 'gamma': [1,0.1,0.01,0.001],'kernel': ['rbf', 'poly', 'sigmoid']}
-    grid = GridSearchCV(SVC(),param_grid,refit=True,verbose=2)
+    grid = GridSearchCV(SVC(random_state=1),param_grid,refit=True,verbose=2)
     grid_result = grid.fit(x_train, y_train)
     print(grid_result.best_params_)
    

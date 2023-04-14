@@ -119,4 +119,4 @@ def preprocess(dataset, text_col_name = 'Text', label_col_name = None):
     return df
 
 def split_train_test(features, labels):
-    return train_test_split(features, labels, test_size = 0.2, random_state=4211)
+    return train_test_split(features, labels, test_size = 0.2, random_state=4263)

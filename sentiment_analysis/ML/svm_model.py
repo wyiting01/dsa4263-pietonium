@@ -13,7 +13,7 @@ def svm_instantiate_tfidf_vectorizer(x_train):
     return vectorizer
 
 def svm_instantiate_svm_model(x_train, y_train, set_random_state = 1):
-    svm_model = svm.LinearSVC(random_state = set_random_state)
+    svm_model = svm.SVC(kernel = 'linear', probability = True, random_state = set_random_state)
     svm_model.fit(x_train, y_train)
     return svm_model
 
