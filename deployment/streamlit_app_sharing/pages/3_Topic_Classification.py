@@ -2,11 +2,8 @@ import streamlit as st
 import pickle
 import sys
 
-sys.path.append("../")
-from preprocess_fn import *
-
-sys.path.append("../")
-from topic_classification_modularized import *
+from ...preprocess_fn import *
+from ...topic_classification_modularized import *
 
 st.set_page_config(page_title = 'Topic Classification', 
                    layout = "wide")
