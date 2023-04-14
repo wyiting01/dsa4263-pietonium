@@ -9,27 +9,24 @@ from sklearn.metrics import classification_report, confusion_matrix, ConfusionMa
 from xgboost import XGBClassifier
 np.random.seed(1)
 
-# write functions to illustrate pipeline
-# 1. Vectorizer
+# instantiate tfidf vectorizer and return a fitted vectorizer
 def xgb_instantiate_tfidf_vectorizer(x_train):
     vectorizer = TfidfVectorizer(max_df=0.8, sublinear_tf=True)
     vectorizer.fit(x_train)
     return vectorizer
 
-# train_vectors = vectorizer.fit_transform(x_train)
-# test_vectors = vectorizer.transform(x_test)
-
+# instantiate xgboost model and return fitted model
 def xgb_instantiate_xgb_model(x_train, y_train, set_random_state = 1):
     xgb_model = XGBClassifier(random_state = set_random_state)
     xgb_model.fit(x_train, y_train)
     return xgb_model
 
-# x_test_predicted = xgb_model.predict(test_vectors)
-
+# obtain classification report
 def xgb_get_classification_report(actual, predicted):
     report = classification_report(actual, predicted, output_dict=True)
     return report
 
+# print classificatoin report in a nice way
 def xgb_print_classifcation_rerport(report):
     print('Positive:')
     print('---------')
@@ -45,6 +42,7 @@ def xgb_print_classifcation_rerport(report):
     print('--------')
     print(f"accuracy: {round(report['accuracy'], 3)}")
 
+# obtain the plot for confusion matrix
 def xgb_get_confusion_matrix(actual, predicted):
     cm = confusion_matrix(actual, predicted)
     cm_display = ConfusionMatrixDisplay(confusion_matrix = cm, display_labels = ['negative', 'positive'])
