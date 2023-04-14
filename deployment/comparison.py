@@ -29,8 +29,6 @@ def get_best_model(evaluation_output, metric = "accuracy", output_cm = True):
         cm_display = ConfusionMatrixDisplay(confusion_matrix = cm, display_labels = ['negative', 'positive'])
         cm_display.plot()
         plt.title(f'Confusion Matrix for {best_metric_model_name.upper()}')
-        txt = "Please close this window to finish executing the code"
-        plt.xlabel("Predicted label\n(Close this window to proceed)")
         plt.show()
         return best_metric_model_name, best_metric_model_results
     
